@@ -18,10 +18,8 @@ export default function MovieStreamingApp() {
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [showAutocomplete, setShowAutocomplete] = useState(false)
-  const [searchError, setSearchError] = useState<string | null>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout>()
   const searchContainerRef = useRef<HTMLDivElement>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -38,37 +36,17 @@ export default function MovieStreamingApp() {
     if (query.length < 2) {
       setSearchResults([])
       setShowAutocomplete(false)
-      setSearchError(null)
       return
-    }
-
-    // Cancel previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
     }
 
     setIsSearching(true)
     setShowAutocomplete(true)
-    setSearchError(null)
 
     try {
       const apiKey = "3fb40590"
-      abortControllerRef.current = new AbortController()
-      const timeoutId = setTimeout(() => abortControllerRef.current?.abort(), 10000)
-      
       const response = await fetch(
         `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&type=movie&apikey=${apiKey}`,
-        { 
-          signal: abortControllerRef.current.signal
-        }
       )
-      
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
       const data = await response.json()
 
       if (data.Response === "True" && data.Search) {
@@ -79,20 +57,11 @@ export default function MovieStreamingApp() {
           poster: movie.Poster !== "N/A" ? movie.Poster : undefined,
         }))
         setSearchResults(movies)
-        setSearchError(null)
-      } else if (data.Error) {
-        setSearchResults([])
-        setSearchError(data.Error)
       } else {
         setSearchResults([])
-        setSearchError(null)
       }
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.log("Search error:", error)
-        setSearchResults([])
-        setSearchError("Search temporarily unavailable. Try again in a moment.")
-      }
+    } catch (error) {
+      setSearchResults([])
     }
 
     setIsSearching(false)
@@ -102,15 +71,13 @@ export default function MovieStreamingApp() {
     const query = e.target.value
     setSearchQuery(query)
 
-    // Cancel previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
 
-    // Increase debounce delay to reduce rapid API calls
     searchTimeoutRef.current = setTimeout(() => {
       searchMovies(query)
-    }, 500) // Increased from 300ms to 500ms
+    }, 300)
   }
 
   const selectMovie = (movie: Movie) => {
@@ -170,8 +137,6 @@ export default function MovieStreamingApp() {
             <div className="absolute top-full left-0 right-0 bg-black/95 border-2 border-[#333] border-t-0 rounded-b-xl backdrop-blur-xl max-h-96 overflow-y-auto z-[99999] shadow-2xl">
               {isSearching ? (
                 <div className="text-center py-6 text-[#888] animate-pulse">searching...</div>
-              ) : searchError ? (
-                <div className="text-center py-6 text-red-400">{searchError}</div>
               ) : searchResults.length > 0 ? (
                 searchResults.map((movie) => (
                   <div
