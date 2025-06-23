@@ -134,14 +134,7 @@ export default function MovieStreamingApp() {
 
           {/* Autocomplete Dropdown */}
           {showAutocomplete && (
-            <div
-              className="fixed left-1/2 transform -translate-x-1/2 w-full max-w-2xl bg-black/95 border-2 border-[#333] border-t-0 rounded-b-xl backdrop-blur-xl max-h-96 overflow-y-auto z-[9999]"
-              style={{
-                top: searchContainerRef.current
-                  ? searchContainerRef.current.getBoundingClientRect().bottom + window.scrollY
-                  : "auto",
-              }}
-            >
+            <div className="absolute top-full left-0 right-0 bg-black/95 border-2 border-[#333] border-t-0 rounded-b-xl backdrop-blur-xl max-h-96 overflow-y-auto z-[99999] shadow-2xl">
               {isSearching ? (
                 <div className="text-center py-6 text-[#888] animate-pulse">searching...</div>
               ) : searchResults.length > 0 ? (
