@@ -43,7 +43,7 @@ export default function MovieStreamingApp() {
     setShowAutocomplete(true)
 
     try {
-      const apiKey = "3fb40590"
+      const apiKey = "6138ba16"
       const response = await fetch(
         `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&type=movie&apikey=${apiKey}`,
       )
