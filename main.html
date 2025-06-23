@@ -330,6 +330,31 @@
                 this.playerContainer = document.getElementById('playerContainer');
                 this.searchTimeout = null;
                 this.currentMovies = [];
+                
+                // Popular movies database with IMDb IDs for fallback
+                this.popularMovies = [
+                    {title: "The Dark Knight", year: "2008", imdbId: "tt0468569"},
+                    {title: "Inception", year: "2010", imdbId: "tt1375666"},
+                    {title: "Pulp Fiction", year: "1994", imdbId: "tt0110912"},
+                    {title: "The Shawshank Redemption", year: "1994", imdbId: "tt0111161"},
+                    {title: "The Godfather", year: "1972", imdbId: "tt0068646"},
+                    {title: "Fight Club", year: "1999", imdbId: "tt0137523"},
+                    {title: "Goodfellas", year: "1990", imdbId: "tt0099685"},
+                    {title: "The Matrix", year: "1999", imdbId: "tt0133093"},
+                    {title: "Forrest Gump", year: "1994", imdbId: "tt0109830"},
+                    {title: "Interstellar", year: "2014", imdbId: "tt0816692"},
+                    {title: "The Wolf of Wall Street", year: "2013", imdbId: "tt0993846"},
+                    {title: "Avengers: Endgame", year: "2019", imdbId: "tt4154796"},
+                    {title: "Joker", year: "2019", imdbId: "tt7286456"},
+                    {title: "Parasite", year: "2019", imdbId: "tt6751668"},
+                    {title: "Dune", year: "2021", imdbId: "tt1160419"},
+                    {title: "Spider-Man: No Way Home", year: "2021", imdbId: "tt10872600"},
+                    {title: "Top Gun: Maverick", year: "2022", imdbId: "tt1745960"},
+                    {title: "Avatar: The Way of Water", year: "2022", imdbId: "tt1630029"},
+                    {title: "Black Panther", year: "2018", imdbId: "tt1825683"},
+                    {title: "Deadpool", year: "2016", imdbId: "tt1431045"}
+                ];
+                
                 this.initEventListeners();
             }
 
@@ -362,32 +387,49 @@
             async searchMovies(query) {
                 try {
                     this.showAutocompleteLoading();
-                    const searchUrl = `https://v3.sg.media-imdb.com/suggestion/x/${encodeURIComponent(query.toLowerCase())}.json`;
-                    const response = await fetch(searchUrl);
-                    const data = await response.json();
-                    if (data && data.d && data.d.length > 0) {
-                        const movies = data.d.filter(item => 
-                            item.q === 'feature' || 
-                            item.q === 'TV movie' ||
-                            (item.q && item.q.includes('movie'))
-                        ).slice(0, 8).map(movie => ({
-                            title: movie.l || 'Unknown Title',
-                            year: movie.y || 'Unknown',
-                            imdbId: movie.id || '',
-                            poster: movie.i && movie.i[0] ? movie.i[0] : null
-                        }));
-                        if (movies.length > 0) {
-                            this.currentMovies = movies;
-                            this.displayAutocomplete(movies);
-                        } else {
-                            this.showNoResults();
-                        }
-                    } else {
-                        this.showNoResults();
-                    }
+                    
+                    // Try the OMDB API first (free and CORS-friendly)
+                    await this.searchWithOMDB(query);
                 } catch (error) {
-                    console.error('Search error:', error);
-                    this.showSearchError();
+                    console.log('OMDB search failed, trying local search:', error);
+                    // Fallback to local search
+                    this.searchLocalMovies(query);
+                }
+            }
+
+            async searchWithOMDB(query) {
+                // Using OMDB API which is CORS-friendly
+                const apiKey = '3fb40590'; // Free API key (you should get your own)
+                const searchUrl = `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&type=movie&apikey=${apiKey}`;
+                
+                const response = await fetch(searchUrl);
+                const data = await response.json();
+                
+                if (data.Response === "True" && data.Search) {
+                    const movies = data.Search.slice(0, 8).map(movie => ({
+                        title: movie.Title,
+                        year: movie.Year,
+                        imdbId: movie.imdbID,
+                        poster: movie.Poster !== 'N/A' ? movie.Poster : null
+                    }));
+                    
+                    this.currentMovies = movies;
+                    this.displayAutocomplete(movies);
+                } else {
+                    this.searchLocalMovies(query);
+                }
+            }
+
+            searchLocalMovies(query) {
+                const filteredMovies = this.popularMovies.filter(movie => 
+                    movie.title.toLowerCase().includes(query.toLowerCase())
+                ).slice(0, 8);
+                
+                if (filteredMovies.length > 0) {
+                    this.currentMovies = filteredMovies;
+                    this.displayAutocomplete(filteredMovies);
+                } else {
+                    this.showNoResults();
                 }
             }
 
@@ -402,7 +444,7 @@
                         'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNzUiIHZpZXdCb3g9IjAgMCA1MCA3NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMzMzIi8+CjxwYXRoIGQ9Ik0xNSAzMEgzNVYzNEgxNVYzMFpNMTUgMzhIMzVWNDJIMTVWMzhaIiBmaWxsPSIjNjY2Ii8+CjwvZWc+';
                     return `
                         <div class="autocomplete-item" onclick="moviePlayer.selectMovie('${movie.imdbId}', '${movie.title.replace(/'/g, "\\'")}')">
-                            <img src="${posterSrc}" alt="${movie.title}" onerror="this.src='${posterSrc}'">
+                            <img src="${posterSrc}" alt="${movie.title}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNzUiIHZpZXdCb3g9IjAgMCA1MCA3NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9Ijc1IiBmaWxsPSIjMzMzIi8+CjxwYXRoIGQ9Ik0xNSAzMEgzNVYzNEgxNVYzMFpNMTUgMzhIMzVWNDJIMTVWMzhaIiBmaWxsPSIjNjY2Ii8+CjwvZWc+'">
                             <div class="autocomplete-item-info">
                                 <div class="autocomplete-item-title">${movie.title}</div>
                                 <div class="autocomplete-item-year">${movie.year}</div>
