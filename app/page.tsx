@@ -59,11 +59,7 @@ export default function MovieStreamingApp() {
       const response = await fetch(
         `https://www.omdbapi.com/?s=${encodeURIComponent(query)}&type=movie&apikey=${apiKey}`,
         { 
-          signal: abortControllerRef.current.signal,
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
+          signal: abortControllerRef.current.signal
         }
       )
       
