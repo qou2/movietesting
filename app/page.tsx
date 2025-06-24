@@ -2,10 +2,11 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Search, Filter, X, Star, Calendar, Clock, Heart, Play, Info } from "lucide-react"
+import { Search, Filter, X, Star, Calendar, Clock, Heart, Play, Info, Tv, Film } from "lucide-react"
 import { useDatabase } from "@/hooks/useDatabase"
+import SeasonEpisodeSelector from "@/components/season-episode-selector"
 
-interface Movie {
+interface Media {
   title: string
   year: string
   tmdbId: number
@@ -17,6 +18,14 @@ interface Movie {
   rating?: number
   releaseDate?: string
   runtime?: number
+  mediaType: "movie" | "tv"
+  // TV show specific fields
+  seasonNumber?: number
+  episodeNumber?: number
+  totalSeasons?: number
+  totalEpisodes?: number
+  episodeTitle?: string
+  seasonTitle?: string
 }
 
 interface SearchFilters {
@@ -24,6 +33,7 @@ interface SearchFilters {
   yearFrom: string
   yearTo: string
   minRating: string
+  mediaType: "all" | "movie" | "tv"
 }
 
 const TMDB_API_KEY = "fd9e39d4ba4a0d878ba369e39793b5f8"
@@ -34,21 +44,27 @@ const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p"
 
 export default function EnhancedMovieApp() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<Movie[]>([])
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
+  const [searchResults, setSearchResults] = useState<Media[]>([])
+  const [selectedMedia, setSelectedMedia] = useState<Media | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [showAutocomplete, setShowAutocomplete] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const { favorites, watchHistory, isLoading, toggleFavorite, addToWatchHistory } = useDatabase()
   const [searchHistory, setSearchHistory] = useState<string[]>([])
-  const [recommendedMovies, setRecommendedMovies] = useState<Movie[]>([])
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([])
+  const [recommendedMedia, setRecommendedMedia] = useState<Media[]>([])
+  const [trendingMedia, setTrendingMedia] = useState<Media[]>([])
+
+  // TV show specific states
+  const [selectedSeason, setSelectedSeason] = useState(1)
+  const [selectedEpisode, setSelectedEpisode] = useState(1)
+  const [selectedEpisodeData, setSelectedEpisodeData] = useState<any>(null)
 
   const [filters, setFilters] = useState<SearchFilters>({
     genre: "",
     yearFrom: "",
     yearTo: "",
     minRating: "",
+    mediaType: "all",
   })
 
   const searchTimeoutRef = useRef<NodeJS.Timeout>()
@@ -74,9 +90,39 @@ export default function EnhancedMovieApp() {
     { id: 37, name: "Western" },
   ]
 
-  // Load data and trending movies on component mount
+  // Helper function to safely parse year from date
+  const parseYear = (dateString: string | null | undefined): string => {
+    if (!dateString) return ""
+
+    try {
+      const date = new Date(dateString)
+      const year = date.getFullYear()
+
+      // Check if year is reasonable (between 1900 and current year + 5)
+      const currentYear = new Date().getFullYear()
+      if (year >= 1900 && year <= currentYear + 5) {
+        return year.toString()
+      }
+
+      // If full date parsing fails, try to extract year from string
+      const yearMatch = dateString.match(/(\d{4})/)
+      if (yearMatch) {
+        const extractedYear = Number.parseInt(yearMatch[1])
+        if (extractedYear >= 1900 && extractedYear <= currentYear + 5) {
+          return extractedYear.toString()
+        }
+      }
+
+      return ""
+    } catch (error) {
+      console.warn("Error parsing date:", dateString, error)
+      return ""
+    }
+  }
+
+  // Load data and trending content on component mount
   useEffect(() => {
-    loadTrendingMovies()
+    loadTrendingContent()
   }, [])
 
   useEffect(() => {
@@ -85,61 +131,126 @@ export default function EnhancedMovieApp() {
     }
   }, [watchHistory, isLoading])
 
-  const loadTrendingMovies = async () => {
+  const loadTrendingContent = async () => {
     try {
-      const response = await fetch(`${TMDB_BASE_URL}/trending/movie/week`, {
-        headers: {
-          Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      })
-      const data = await response.json()
+      // Load both trending movies and TV shows
+      const [moviesResponse, tvResponse] = await Promise.all([
+        fetch(`${TMDB_BASE_URL}/trending/movie/week`, {
+          headers: {
+            Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }),
+        fetch(`${TMDB_BASE_URL}/trending/tv/week`, {
+          headers: {
+            Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+        }),
+      ])
 
-      if (data.results) {
-        const movies = data.results.slice(0, 12).map((movie: any) => ({
+      const [moviesData, tvData] = await Promise.all([moviesResponse.json(), tvResponse.json()])
+
+      const allTrending = []
+
+      // Add movies
+      if (moviesData.results) {
+        const movies = moviesData.results.slice(0, 6).map((movie: any) => ({
           title: movie.title,
-          year: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : "",
+          year: parseYear(movie.release_date),
           tmdbId: movie.id,
           poster: movie.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : undefined,
           backdrop: movie.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : undefined,
           overview: movie.overview,
           rating: movie.vote_average,
           releaseDate: movie.release_date,
+          mediaType: "movie" as const,
         }))
-        setTrendingMovies(movies)
+        allTrending.push(...movies)
       }
+
+      // Add TV shows
+      if (tvData.results) {
+        const tvShows = tvData.results.slice(0, 6).map((show: any) => ({
+          title: show.name,
+          year: parseYear(show.first_air_date),
+          tmdbId: show.id,
+          poster: show.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${show.poster_path}` : undefined,
+          backdrop: show.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${show.backdrop_path}` : undefined,
+          overview: show.overview,
+          rating: show.vote_average,
+          releaseDate: show.first_air_date,
+          mediaType: "tv" as const,
+        }))
+        allTrending.push(...tvShows)
+      }
+
+      // Shuffle and limit
+      const shuffled = allTrending.sort(() => 0.5 - Math.random()).slice(0, 12)
+      setTrendingMedia(shuffled)
     } catch (error) {
-      console.error("Failed to load trending movies:", error)
+      console.error("Failed to load trending content:", error)
     }
   }
 
-  const loadRecommendations = async (watchHistoryData: Movie[]) => {
+  const loadRecommendations = async (watchHistoryData: Media[]) => {
     if (watchHistoryData.length === 0) {
-      // Load popular movies as fallback
+      // Load popular content as fallback
       try {
-        const response = await fetch(`${TMDB_BASE_URL}/movie/popular`, {
-          headers: {
-            Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-        })
-        const data = await response.json()
+        const [moviesResponse, tvResponse] = await Promise.all([
+          fetch(`${TMDB_BASE_URL}/movie/popular`, {
+            headers: {
+              Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }),
+          fetch(`${TMDB_BASE_URL}/tv/popular`, {
+            headers: {
+              Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }),
+        ])
 
-        if (data.results) {
-          const movies = data.results.slice(0, 8).map((movie: any) => ({
+        const [moviesData, tvData] = await Promise.all([moviesResponse.json(), tvResponse.json()])
+
+        const allPopular = []
+
+        // Add movies
+        if (moviesData.results) {
+          const movies = moviesData.results.slice(0, 4).map((movie: any) => ({
             title: movie.title,
-            year: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : "",
+            year: parseYear(movie.release_date),
             tmdbId: movie.id,
             poster: movie.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : undefined,
             backdrop: movie.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : undefined,
             overview: movie.overview,
             rating: movie.vote_average,
             releaseDate: movie.release_date,
+            mediaType: "movie" as const,
           }))
-          setRecommendedMovies(movies)
+          allPopular.push(...movies)
         }
+
+        // Add TV shows
+        if (tvData.results) {
+          const tvShows = tvData.results.slice(0, 4).map((show: any) => ({
+            title: show.name,
+            year: parseYear(show.first_air_date),
+            tmdbId: show.id,
+            poster: show.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${show.poster_path}` : undefined,
+            backdrop: show.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${show.backdrop_path}` : undefined,
+            overview: show.overview,
+            rating: show.vote_average,
+            releaseDate: show.first_air_date,
+            mediaType: "tv" as const,
+          }))
+          allPopular.push(...tvShows)
+        }
+
+        setRecommendedMedia(allPopular)
       } catch (error) {
-        console.error("Failed to load popular movies:", error)
+        console.error("Failed to load popular content:", error)
       }
       return
     }
@@ -148,7 +259,8 @@ export default function EnhancedMovieApp() {
     const lastWatched = watchHistoryData[0]
     if (lastWatched) {
       try {
-        const response = await fetch(`${TMDB_BASE_URL}/movie/${lastWatched.tmdbId}/recommendations`, {
+        const endpoint = lastWatched.mediaType === "tv" ? "tv" : "movie"
+        const response = await fetch(`${TMDB_BASE_URL}/${endpoint}/${lastWatched.tmdbId}/recommendations`, {
           headers: {
             Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
             "Content-Type": "application/json",
@@ -157,17 +269,18 @@ export default function EnhancedMovieApp() {
         const data = await response.json()
 
         if (data.results) {
-          const movies = data.results.slice(0, 8).map((movie: any) => ({
-            title: movie.title,
-            year: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : "",
-            tmdbId: movie.id,
-            poster: movie.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : undefined,
-            backdrop: movie.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : undefined,
-            overview: movie.overview,
-            rating: movie.vote_average,
-            releaseDate: movie.release_date,
+          const recommendations = data.results.slice(0, 8).map((item: any) => ({
+            title: item.title || item.name,
+            year: parseYear(item.release_date || item.first_air_date),
+            tmdbId: item.id,
+            poster: item.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${item.poster_path}` : undefined,
+            backdrop: item.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${item.backdrop_path}` : undefined,
+            overview: item.overview,
+            rating: item.vote_average,
+            releaseDate: item.release_date || item.first_air_date,
+            mediaType: lastWatched.mediaType,
           }))
-          setRecommendedMovies(movies)
+          setRecommendedMedia(recommendations)
         }
       } catch (error) {
         console.error("Failed to load recommendations:", error)
@@ -182,15 +295,15 @@ export default function EnhancedMovieApp() {
     setSearchHistory(newHistory)
   }
 
-  const saveToWatchHistory = (movie: Movie) => {
-    addToWatchHistory(movie)
+  const saveToWatchHistory = (media: Media) => {
+    addToWatchHistory(media)
   }
 
-  const handleToggleFavorite = async (movie: Movie) => {
-    await toggleFavorite(movie)
+  const handleToggleFavorite = async (media: Media) => {
+    await toggleFavorite(media)
   }
 
-  const searchMovies = async (query: string) => {
+  const searchContent = async (query: string) => {
     if (query.length < 2) {
       setSearchResults([])
       setShowAutocomplete(false)
@@ -202,58 +315,93 @@ export default function EnhancedMovieApp() {
     saveToHistory(query)
 
     try {
-      let url = `${TMDB_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`
+      const searches = []
 
-      // Add year filter if specified
-      if (filters.yearFrom) {
-        url += `&year=${filters.yearFrom}`
+      // Search movies if not filtering for TV only
+      if (filters.mediaType === "all" || filters.mediaType === "movie") {
+        searches.push(
+          fetch(`${TMDB_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`, {
+            headers: {
+              Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }),
+        )
+      } else {
+        searches.push(Promise.resolve({ json: () => ({ results: [] }) }))
       }
 
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      })
-      const data = await response.json()
+      // Search TV shows if not filtering for movies only
+      if (filters.mediaType === "all" || filters.mediaType === "tv") {
+        searches.push(
+          fetch(`${TMDB_BASE_URL}/search/tv?query=${encodeURIComponent(query)}`, {
+            headers: {
+              Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          }),
+        )
+      } else {
+        searches.push(Promise.resolve({ json: () => ({ results: [] }) }))
+      }
 
-      if (data.results) {
-        const movies = data.results.map((movie: any) => ({
+      const [movieResponse, tvResponse] = await Promise.all(searches)
+      const [movieData, tvData] = await Promise.all([movieResponse.json(), tvResponse.json()])
+
+      const allResults = []
+
+      // Add movies
+      if (movieData.results) {
+        const movies = movieData.results.map((movie: any) => ({
           title: movie.title,
-          year: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : "",
+          year: parseYear(movie.release_date),
           tmdbId: movie.id,
           poster: movie.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${movie.poster_path}` : undefined,
           backdrop: movie.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : undefined,
           overview: movie.overview,
           rating: movie.vote_average,
           releaseDate: movie.release_date,
+          mediaType: "movie" as const,
         }))
-
-        // Apply filters
-        let filteredMovies = movies
-
-        if (filters.genre) {
-          // This would require additional API calls to get genre info for each movie
-          // For now, we'll skip this filter in search results
-        }
-
-        if (filters.yearFrom && filters.yearTo) {
-          filteredMovies = filteredMovies.filter((movie) => {
-            const year = Number.parseInt(movie.year)
-            return year >= Number.parseInt(filters.yearFrom) && year <= Number.parseInt(filters.yearTo)
-          })
-        }
-
-        if (filters.minRating) {
-          filteredMovies = filteredMovies.filter(
-            (movie) => movie.rating && movie.rating >= Number.parseFloat(filters.minRating),
-          )
-        }
-
-        setSearchResults(filteredMovies.slice(0, 10))
-      } else {
-        setSearchResults([])
+        allResults.push(...movies)
       }
+
+      // Add TV shows
+      if (tvData.results) {
+        const tvShows = tvData.results.map((show: any) => ({
+          title: show.name,
+          year: parseYear(show.first_air_date),
+          tmdbId: show.id,
+          poster: show.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${show.poster_path}` : undefined,
+          backdrop: show.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${show.backdrop_path}` : undefined,
+          overview: show.overview,
+          rating: show.vote_average,
+          releaseDate: show.first_air_date,
+          mediaType: "tv" as const,
+        }))
+        allResults.push(...tvShows)
+      }
+
+      // Apply filters
+      let filteredResults = allResults
+
+      if (filters.yearFrom && filters.yearTo) {
+        filteredResults = filteredResults.filter((item) => {
+          const year = Number.parseInt(item.year)
+          return year >= Number.parseInt(filters.yearFrom) && year <= Number.parseInt(filters.yearTo)
+        })
+      }
+
+      if (filters.minRating) {
+        filteredResults = filteredResults.filter(
+          (item) => item.rating && item.rating >= Number.parseFloat(filters.minRating),
+        )
+      }
+
+      // Sort by popularity (rating * vote count approximation)
+      filteredResults.sort((a, b) => (b.rating || 0) - (a.rating || 0))
+
+      setSearchResults(filteredResults.slice(0, 10))
     } catch (error) {
       setSearchResults([])
     }
@@ -270,14 +418,15 @@ export default function EnhancedMovieApp() {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      searchMovies(query)
+      searchContent(query)
     }, 300)
   }
 
-  const selectMovie = async (movie: Movie) => {
-    // Get detailed movie info
+  const selectMedia = async (media: Media) => {
+    // Get detailed info
     try {
-      const response = await fetch(`${TMDB_BASE_URL}/movie/${movie.tmdbId}`, {
+      const endpoint = media.mediaType === "tv" ? "tv" : "movie"
+      const response = await fetch(`${TMDB_BASE_URL}/${endpoint}/${media.tmdbId}`, {
         headers: {
           Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
           "Content-Type": "application/json",
@@ -285,22 +434,51 @@ export default function EnhancedMovieApp() {
       })
       const detailData = await response.json()
 
-      const detailedMovie = {
-        ...movie,
+      const detailedMedia = {
+        ...media,
         genre: detailData.genres?.map((g: any) => g.name).join(", "),
-        runtime: detailData.runtime,
+        runtime: detailData.runtime || detailData.episode_run_time?.[0],
         imdbId: detailData.imdb_id,
+        totalSeasons: detailData.number_of_seasons,
+        totalEpisodes: detailData.number_of_episodes,
       }
 
-      setSelectedMovie(detailedMovie)
-      setSearchQuery(movie.title)
+      setSelectedMedia(detailedMedia)
+      setSearchQuery(media.title)
       setShowAutocomplete(false)
-      saveToWatchHistory(detailedMovie)
+
+      // Reset TV show selections
+      if (media.mediaType === "tv") {
+        setSelectedSeason(1)
+        setSelectedEpisode(1)
+        setSelectedEpisodeData(null)
+      } else {
+        saveToWatchHistory(detailedMedia)
+      }
     } catch (error) {
-      setSelectedMovie(movie)
-      setSearchQuery(movie.title)
+      setSelectedMedia(media)
+      setSearchQuery(media.title)
       setShowAutocomplete(false)
-      saveToWatchHistory(movie)
+      if (media.mediaType === "movie") {
+        saveToWatchHistory(media)
+      }
+    }
+  }
+
+  const handleEpisodeSelect = (season: number, episode: number, episodeData: any) => {
+    setSelectedSeason(season)
+    setSelectedEpisode(episode)
+    setSelectedEpisodeData(episodeData)
+
+    if (selectedMedia) {
+      const episodeMedia = {
+        ...selectedMedia,
+        seasonNumber: season,
+        episodeNumber: episode,
+        episodeTitle: episodeData.name,
+        runtime: episodeData.runtime,
+      }
+      saveToWatchHistory(episodeMedia)
     }
   }
 
@@ -310,6 +488,7 @@ export default function EnhancedMovieApp() {
       yearFrom: "",
       yearTo: "",
       minRating: "",
+      mediaType: "all",
     })
   }
 
@@ -324,19 +503,19 @@ export default function EnhancedMovieApp() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const MovieCard = ({
-    movie,
+  const MediaCard = ({
+    media,
     showFavorite = false,
     size = "normal",
-  }: { movie: Movie; showFavorite?: boolean; size?: "normal" | "large" }) => (
+  }: { media: Media; showFavorite?: boolean; size?: "normal" | "large" }) => (
     <div
       className={`flex-shrink-0 cursor-pointer group relative ${size === "large" ? "w-64" : "w-48"}`}
-      onClick={() => selectMovie(movie)}
+      onClick={() => selectMedia(media)}
     >
       <div className="relative overflow-hidden rounded-xl">
         <img
-          src={movie.poster || "/placeholder.svg?height=300&width=200"}
-          alt={movie.title}
+          src={media.poster || "/placeholder.svg?height=300&width=200"}
+          alt={media.title}
           className={`w-full object-cover border border-[#333] group-hover:scale-105 transition-all duration-300 ${size === "large" ? "h-96" : "h-72"}`}
           onError={(e) => {
             const target = e.target as HTMLImageElement
@@ -344,6 +523,28 @@ export default function EnhancedMovieApp() {
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Media Type Badge */}
+        <div className="absolute top-2 left-2">
+          <div
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              media.mediaType === "tv" ? "bg-blue-600/80 text-blue-100" : "bg-purple-600/80 text-purple-100"
+            }`}
+          >
+            {media.mediaType === "tv" ? (
+              <div className="flex items-center">
+                <Tv className="w-3 h-3 mr-1" />
+                TV
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <Film className="w-3 h-3 mr-1" />
+                Movie
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="absolute bottom-4 left-4 right-4 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -354,12 +555,12 @@ export default function EnhancedMovieApp() {
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleToggleFavorite(movie)
+                  handleToggleFavorite(media)
                 }}
                 className="p-2 bg-black/70 rounded-full hover:bg-black/90 transition-colors"
               >
                 <Heart
-                  className={`w-4 h-4 ${favorites.includes(movie.tmdbId) ? "fill-red-500 text-red-500" : "text-white"}`}
+                  className={`w-4 h-4 ${favorites.includes(media.tmdbId) ? "fill-red-500 text-red-500" : "text-white"}`}
                 />
               </button>
             )}
@@ -367,19 +568,29 @@ export default function EnhancedMovieApp() {
         </div>
       </div>
       <div className="mt-3">
-        <h3 className="font-semibold text-white text-sm truncate">{movie.title}</h3>
+        <h3 className="font-semibold text-white text-sm truncate">{media.title}</h3>
         <div className="flex items-center justify-between mt-1">
-          <p className="text-[#888] text-xs">{movie.year}</p>
-          {movie.rating && (
+          <p className="text-[#888] text-xs">{media.year}</p>
+          {media.rating && (
             <div className="flex items-center">
               <Star className="w-3 h-3 text-yellow-500 mr-1" />
-              <span className="text-yellow-500 text-xs">{movie.rating.toFixed(1)}</span>
+              <span className="text-yellow-500 text-xs">{media.rating.toFixed(1)}</span>
             </div>
           )}
         </div>
       </div>
     </div>
   )
+
+  const getPlayerUrl = () => {
+    if (!selectedMedia) return ""
+
+    if (selectedMedia.mediaType === "tv") {
+      return `https://player.videasy.net/tv/${selectedMedia.tmdbId}/${selectedSeason}/${selectedEpisode}`
+    } else {
+      return `https://player.videasy.net/movie/${selectedMedia.tmdbId}`
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] text-[#e0e0e0] relative overflow-x-hidden">
@@ -402,7 +613,7 @@ export default function EnhancedMovieApp() {
               movie time
             </h1>
           </div>
-          <p className="text-[#888] text-lg font-normal mb-2">powered by qou2's brain!1!1 • unlimited streaming</p>
+          <p className="text-[#888] text-lg font-normal mb-2">powered by videasy • unlimited streaming</p>
           <div className="opacity-60 hover:opacity-100 transition-opacity duration-300">
             <a
               href="https://qou2.xyz"
@@ -423,7 +634,7 @@ export default function EnhancedMovieApp() {
               onChange={handleSearchChange}
               onFocus={() => searchQuery.length >= 2 && setShowAutocomplete(true)}
               className="w-full pl-12 pr-16 py-4 text-lg border-2 border-purple-500/30 rounded-2xl bg-black/60 backdrop-blur-xl text-white outline-none transition-all duration-300 focus:border-purple-500 focus:bg-black/80 focus:-translate-y-1 focus:shadow-2xl focus:shadow-purple-500/20 placeholder:text-[#666] relative z-10"
-              placeholder="search for movies..."
+              placeholder="search for movies and TV shows..."
               autoComplete="off"
             />
             <button
@@ -450,18 +661,15 @@ export default function EnhancedMovieApp() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Genre</label>
+                  <label className="block text-sm text-[#888] mb-2">Content Type</label>
                   <select
-                    value={filters.genre}
-                    onChange={(e) => setFilters({ ...filters, genre: e.target.value })}
+                    value={filters.mediaType}
+                    onChange={(e) => setFilters({ ...filters, mediaType: e.target.value as "all" | "movie" | "tv" })}
                     className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
                   >
-                    <option value="">All Genres</option>
-                    {genres.map((genre) => (
-                      <option key={genre.id} value={genre.name}>
-                        {genre.name}
-                      </option>
-                    ))}
+                    <option value="all">Movies & TV Shows</option>
+                    <option value="movie">Movies Only</option>
+                    <option value="tv">TV Shows Only</option>
                   </select>
                 </div>
 
@@ -529,15 +737,15 @@ export default function EnhancedMovieApp() {
               {isSearching ? (
                 <div className="text-center py-6 text-purple-400 animate-pulse">searching...</div>
               ) : searchResults.length > 0 ? (
-                searchResults.map((movie) => (
+                searchResults.map((media) => (
                   <div
-                    key={movie.tmdbId}
-                    onClick={() => selectMovie(movie)}
+                    key={`${media.mediaType}-${media.tmdbId}`}
+                    onClick={() => selectMedia(media)}
                     className="flex items-center p-4 cursor-pointer border-b border-purple-500/20 last:border-b-0 hover:bg-purple-600/20 hover:translate-x-1 transition-all duration-200"
                   >
                     <img
-                      src={movie.poster || "/placeholder.svg?height=75&width=50"}
-                      alt={movie.title}
+                      src={media.poster || "/placeholder.svg?height=75&width=50"}
+                      alt={media.title}
                       className="w-12 h-18 object-cover rounded-lg border border-purple-500/30 mr-4"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
@@ -545,70 +753,81 @@ export default function EnhancedMovieApp() {
                       }}
                     />
                     <div className="flex-1">
-                      <div className="font-semibold text-white mb-1">{movie.title}</div>
+                      <div className="flex items-center mb-1">
+                        <div className="font-semibold text-white mr-2">{media.title}</div>
+                        <div
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            media.mediaType === "tv"
+                              ? "bg-blue-600/80 text-blue-100"
+                              : "bg-purple-600/80 text-purple-100"
+                          }`}
+                        >
+                          {media.mediaType === "tv" ? "TV" : "Movie"}
+                        </div>
+                      </div>
                       <div className="text-[#888] text-sm flex items-center">
                         <Calendar className="w-3 h-3 mr-1" />
-                        {movie.year}
-                        {movie.rating && (
+                        {media.year}
+                        {media.rating && (
                           <>
                             <Star className="w-3 h-3 ml-3 mr-1 text-yellow-500" />
-                            <span className="text-yellow-500">{movie.rating.toFixed(1)}</span>
+                            <span className="text-yellow-500">{media.rating.toFixed(1)}</span>
                           </>
                         )}
                       </div>
-                      {movie.overview && <div className="text-[#666] text-xs mt-1 line-clamp-2">{movie.overview}</div>}
+                      {media.overview && <div className="text-[#666] text-xs mt-1 line-clamp-2">{media.overview}</div>}
                     </div>
                   </div>
                 ))
               ) : searchQuery.length >= 2 ? (
-                <div className="text-center py-6 text-[#888]">no movies found</div>
+                <div className="text-center py-6 text-[#888]">no content found</div>
               ) : null}
             </div>
           )}
         </div>
 
-        {/* Trending Movies */}
-        {!selectedMovie && trendingMovies.length > 0 && (
+        {/* Trending Content */}
+        {!selectedMedia && trendingMedia.length > 0 && (
           <div className="mb-12 relative z-10">
             <div className="flex items-center mb-8">
               <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full mr-4"></div>
               <h2 className="text-3xl font-bold text-white">Trending This Week</h2>
             </div>
             <div className="flex space-x-6 overflow-x-auto pb-4">
-              {trendingMovies.map((movie) => (
-                <MovieCard key={movie.tmdbId} movie={movie} showFavorite size="large" />
+              {trendingMedia.map((media) => (
+                <MediaCard key={`${media.mediaType}-${media.tmdbId}`} media={media} showFavorite size="large" />
               ))}
             </div>
           </div>
         )}
 
-        {/* Recommended Movies */}
-        {!selectedMovie && recommendedMovies.length > 0 && (
+        {/* Recommended Content */}
+        {!selectedMedia && recommendedMedia.length > 0 && (
           <div className="mb-12 relative z-10">
             <div className="flex items-center mb-8">
               <Heart className="w-6 h-6 mr-3 text-pink-500" />
               <h2 className="text-2xl font-bold text-white">
-                {watchHistory.length > 0 ? "Recommended for You" : "Popular Movies"}
+                {watchHistory.length > 0 ? "Recommended for You" : "Popular Content"}
               </h2>
             </div>
             <div className="flex space-x-4 overflow-x-auto pb-4">
-              {recommendedMovies.map((movie) => (
-                <MovieCard key={movie.tmdbId} movie={movie} showFavorite />
+              {recommendedMedia.map((media) => (
+                <MediaCard key={`${media.mediaType}-${media.tmdbId}`} media={media} showFavorite />
               ))}
             </div>
           </div>
         )}
 
         {/* Continue Watching */}
-        {!selectedMovie && watchHistory.length > 0 && (
+        {!selectedMedia && watchHistory.length > 0 && (
           <div className="mb-12 relative z-10">
             <div className="flex items-center mb-8">
               <Clock className="w-6 h-6 mr-3 text-blue-400" />
               <h2 className="text-2xl font-bold text-white">Continue Watching</h2>
             </div>
             <div className="flex space-x-4 overflow-x-auto pb-4">
-              {watchHistory.slice(0, 6).map((movie) => (
-                <MovieCard key={movie.tmdbId} movie={movie} showFavorite />
+              {watchHistory.slice(0, 6).map((media, index) => (
+                <MediaCard key={`${media.mediaType}-${media.tmdbId}-${index}`} media={media} showFavorite />
               ))}
             </div>
           </div>
@@ -616,60 +835,109 @@ export default function EnhancedMovieApp() {
 
         {/* Player Container */}
         <div className="bg-black/60 border-2 border-purple-500/30 rounded-3xl p-8 backdrop-blur-xl animate-fade-in-up-delay-400 relative z-10">
-          {selectedMovie ? (
+          {selectedMedia ? (
             <>
               <div className="flex justify-between items-start mb-8">
                 <div className="flex-1">
-                  <h2 className="text-4xl font-bold text-white mb-3">{selectedMovie.title}</h2>
+                  <div className="flex items-center mb-3">
+                    <h2 className="text-4xl font-bold text-white mr-4">{selectedMedia.title}</h2>
+                    <div
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedMedia.mediaType === "tv"
+                          ? "bg-blue-600/80 text-blue-100"
+                          : "bg-purple-600/80 text-purple-100"
+                      }`}
+                    >
+                      {selectedMedia.mediaType === "tv" ? (
+                        <div className="flex items-center">
+                          <Tv className="w-4 h-4 mr-1" />
+                          TV Show
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <Film className="w-4 h-4 mr-1" />
+                          Movie
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Episode info for TV shows */}
+                  {selectedMedia.mediaType === "tv" && selectedEpisodeData && (
+                    <div className="mb-4">
+                      <h3 className="text-xl font-semibold text-purple-300 mb-1">
+                        Season {selectedSeason}, Episode {selectedEpisode}
+                      </h3>
+                      <h4 className="text-lg text-white">{selectedEpisodeData.name}</h4>
+                    </div>
+                  )}
+
                   <div className="flex items-center text-[#888] text-sm space-x-6 mb-4">
                     <span className="px-3 py-1 bg-purple-600/20 rounded-full text-purple-400 text-xs font-medium">
                       NOW PLAYING
                     </span>
-                    {selectedMovie.year && (
+                    {selectedMedia.year && (
                       <span className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
-                        {selectedMovie.year}
+                        {selectedMedia.year}
                       </span>
                     )}
-                    {selectedMovie.rating && (
+                    {selectedMedia.rating && (
                       <span className="flex items-center text-yellow-500">
                         <Star className="w-4 h-4 mr-1" />
-                        {selectedMovie.rating.toFixed(1)}
+                        {selectedMedia.rating.toFixed(1)}
                       </span>
                     )}
-                    {selectedMovie.runtime && (
+                    {selectedMedia.runtime && (
                       <span className="flex items-center">
                         <Clock className="w-4 h-4 mr-1" />
-                        {selectedMovie.runtime}min
+                        {selectedMedia.runtime}min
                       </span>
                     )}
                   </div>
-                  {selectedMovie.genre && <div className="text-purple-300 text-sm mb-3">{selectedMovie.genre}</div>}
-                  {selectedMovie.overview && (
-                    <p className="text-[#ccc] text-sm leading-relaxed max-w-3xl">{selectedMovie.overview}</p>
+                  {selectedMedia.genre && <div className="text-purple-300 text-sm mb-3">{selectedMedia.genre}</div>}
+                  {(selectedEpisodeData?.overview || selectedMedia.overview) && (
+                    <p className="text-[#ccc] text-sm leading-relaxed max-w-3xl">
+                      {selectedEpisodeData?.overview || selectedMedia.overview}
+                    </p>
                   )}
                 </div>
                 <button
-                  onClick={() => handleToggleFavorite(selectedMovie)}
+                  onClick={() => handleToggleFavorite(selectedMedia)}
                   className="p-4 bg-black/70 rounded-2xl hover:bg-black/90 transition-all duration-300 hover:scale-105"
                 >
                   <Heart
-                    className={`w-6 h-6 ${favorites.includes(selectedMovie.tmdbId) ? "fill-red-500 text-red-500" : "text-white"}`}
+                    className={`w-6 h-6 ${favorites.includes(selectedMedia.tmdbId) ? "fill-red-500 text-red-500" : "text-white"}`}
                   />
                 </button>
               </div>
+
+              {/* Season/Episode Selector for TV Shows */}
+              {selectedMedia.mediaType === "tv" && selectedMedia.totalSeasons && (
+                <div className="mb-8">
+                  <SeasonEpisodeSelector
+                    tmdbId={selectedMedia.tmdbId}
+                    totalSeasons={selectedMedia.totalSeasons}
+                    onEpisodeSelect={handleEpisodeSelect}
+                    currentSeason={selectedSeason}
+                    currentEpisode={selectedEpisode}
+                  />
+                </div>
+              )}
+
               <div className="relative w-full pb-[56.25%] rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20">
                 <iframe
-                  src={`https://player.videasy.net/movie/${selectedMovie.tmdbId}`}
+                  src={getPlayerUrl()}
                   className="absolute inset-0 w-full h-full border-0 rounded-2xl"
                   allowFullScreen
                   allow="encrypted-media"
-                  title="Movie Player"
+                  title={selectedMedia.mediaType === "tv" ? "TV Show Player" : "Movie Player"}
                 />
               </div>
               <div className="mt-6 text-center">
                 <p className="text-[#666] text-xs">
-                  Powered by <span className="text-purple-400 font-medium">Videasy</span> • Made by qou2
+                  Powered by <span className="text-purple-400 font-medium">Videasy</span> • High-quality streaming with
+                  no ads
                 </p>
               </div>
             </>
@@ -680,7 +948,7 @@ export default function EnhancedMovieApp() {
                   <Play className="w-10 h-10 text-white" />
                 </div>
                 <div className="text-white text-xl font-semibold mb-2">Ready to Watch?</div>
-                <div className="text-[#888] text-lg">Search and select a movie to start streaming</div>
+                <div className="text-[#888] text-lg">Search and select movies or TV shows to start streaming</div>
               </div>
             </div>
           )}
