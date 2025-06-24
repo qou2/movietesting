@@ -1,20 +1,27 @@
-import type { Metadata } from 'next'
-import './globals.css'
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import SecurePasswordProtection from "@/components/secure-password-protection"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: 'MovieTime',
-  description: 'qou2 is cute',
-  generator: 'qou2.xyz',
+  title: "Movie Time - Private Access",
+  description: "Private Access",
+  generator: "qou2.xyz",
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>
+        <SecurePasswordProtection>{children}</SecurePasswordProtection>
+      </body>
     </html>
   )
 }
