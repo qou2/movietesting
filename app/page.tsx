@@ -402,7 +402,7 @@ export default function EnhancedMovieApp() {
               movie time
             </h1>
           </div>
-          <p className="text-[#888] text-lg font-normal mb-2">powered by videasy • unlimited streaming</p>
+          <p className="text-[#888] text-lg font-normal mb-2">powered by qou2's brain!1!1 • unlimited streaming</p>
           <div className="opacity-60 hover:opacity-100 transition-opacity duration-300">
             <a
               href="https://qou2.xyz"
