@@ -669,8 +669,7 @@ export default function EnhancedMovieApp() {
               </div>
               <div className="mt-6 text-center">
                 <p className="text-[#666] text-xs">
-                  Powered by <span className="text-purple-400 font-medium">Videasy</span> • High-quality streaming with
-                  no ads
+                  Powered by <span className="text-purple-400 font-medium">Videasy</span> • Made by qou2
                 </p>
               </div>
             </>
