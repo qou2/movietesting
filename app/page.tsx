@@ -65,66 +65,27 @@ export default function EnhancedMovieApp() {
     loadRecommendations(savedWatchHistory)
   }, [])
 
-const loadTrendingMovies = async () => {
-    // Use different popular search terms to get variety of current movies
-    const searchTerms = ["2024", "2023", "action", "comedy", "drama"]
-    const randomTerm = searchTerms[Math.floor(Math.random() * searchTerms.length)]
-
+  const loadTrendingMovies = async () => {
+    const trendingQueries = ["marvel", "batman", "star wars", "harry potter", "lord of the rings"]
+    const randomQuery = trendingQueries[Math.floor(Math.random() * trendingQueries.length)]
+    
     try {
-      const apiKey = "3fb40590"
-      const response = await fetch(https://www.omdbapi.com/?s=${randomTerm}&type=movie&apikey=${apiKey})
+      const response = await fetch(`https://www.omdbapi.com/?s=${randomQuery}&type=movie&apikey=3fb40590`)
       const data = await response.json()
-
+      
       if (data.Response === "True" && data.Search) {
-        // Get detailed info for the first 8 results
-        const detailedMovies = await Promise.all(
-          data.Search.slice(0, 8).map(async (movie: any) => {
-            try {
-              const detailResponse = await fetch(https://www.omdbapi.com/?i=${movie.imdbID}&apikey=${apiKey})
-              const detailData = await detailResponse.json()
-
-              return {
-                title: movie.Title,
-                year: movie.Year,
-                imdbId: movie.imdbID,
-                poster: movie.Poster !== "N/A" ? movie.Poster : undefined,
-                genre: detailData.Genre,
-                director: detailData.Director,
-                imdbRating: detailData.imdbRating,
-                plot: detailData.Plot
-              }
-            } catch {
-              return {
-                title: movie.Title,
-                year: movie.Year,
-                imdbId: movie.imdbID,
-                poster: movie.Poster !== "N/A" ? movie.Poster : undefined,
-              }
-            }
-          })
-        )
-        // Filter for recent movies with good ratings
-        const trendingMovies = detailedMovies
-          .filter(movie => {
-            const year = parseInt(movie.year)
-            const rating = parseFloat(movie.imdbRating || "0")
-            return year >= 2020 && rating >= 6.0
-          })
-          .sort((a, b) => {
-            // Sort by year (newer first) then by rating
-            const yearDiff = parseInt(b.year) - parseInt(a.year)
-            if (yearDiff !== 0) return yearDiff
-            return parseFloat(b.imdbRating || "0") - parseFloat(a.imdbRating || "0")
-          })
-          .slice(0, 6)
-        setTrendingMovies(trendingMovies)
+        const movies = data.Search.slice(0, 6).map((movie: any) => ({
+          title: movie.Title,
+          year: movie.Year,
+          imdbId: movie.imdbID,
+          poster: movie.Poster !== "N/A" ? movie.Poster : undefined,
+        }))
+        setTrendingMovies(movies)
       }
     } catch (error) {
       console.error("Failed to load trending movies:", error)
     }
   }
-
-
 
   const loadRecommendations = (watchHistoryData: Movie[]) => {
     if (watchHistoryData.length === 0) return
