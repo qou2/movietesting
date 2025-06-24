@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Search, Filter, X, Star, Calendar, User, Clock, TrendingUp, Heart } from "lucide-react"
+import { Search, Filter, X, Star, Calendar, User, Clock, CalendarDays, Heart } from "lucide-react"
 
 interface Movie {
   title: string
@@ -31,7 +31,7 @@ export default function EnhancedMovieApp() {
   const [showFilters, setShowFilters] = useState(false)
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const [watchHistory, setWatchHistory] = useState<Movie[]>([])
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([])
+  const [recentlyReleasedMovies, setRecentlyReleasedMovies] = useState<Movie[]>([])
   const [recommendedMovies, setRecommendedMovies] = useState<Movie[]>([])
   const [favorites, setFavorites] = useState<string[]>([])
   
@@ -53,37 +53,82 @@ export default function EnhancedMovieApp() {
 
   // Load data from memory on component mount
   useEffect(() => {
-    const savedHistory = JSON.parse(localStorage?.getItem("movieSearchHistory") || "[]")
-    const savedWatchHistory = JSON.parse(localStorage?.getItem("movieWatchHistory") || "[]")
-    const savedFavorites = JSON.parse(localStorage?.getItem("movieFavorites") || "[]")
+    // Since localStorage is not available, we'll initialize with empty arrays
+    const savedHistory: string[] = []
+    const savedWatchHistory: Movie[] = []
+    const savedFavorites: string[] = []
     
     setSearchHistory(savedHistory)
     setWatchHistory(savedWatchHistory)
     setFavorites(savedFavorites)
     
-    loadTrendingMovies()
+    loadRecentlyReleasedMovies()
     loadRecommendations(savedWatchHistory)
   }, [])
 
-  const loadTrendingMovies = async () => {
-    const trendingQueries = ["marvel", "batman", "star wars", "harry potter", "lord of the rings"]
-    const randomQuery = trendingQueries[Math.floor(Math.random() * trendingQueries.length)]
+  const loadRecentlyReleasedMovies = async () => {
+    const currentYear = new Date().getFullYear()
+    const recentYears = [currentYear, currentYear - 1, currentYear - 2]
+    
+    // Popular recent movie searches to get a good mix
+    const recentQueries = ["action", "comedy", "thriller", "drama", "adventure"]
     
     try {
-      const response = await fetch(`https://www.omdbapi.com/?s=${randomQuery}&type=movie&apikey=3fb40590`)
-      const data = await response.json()
+      const allMovies: Movie[] = []
       
-      if (data.Response === "True" && data.Search) {
-        const movies = data.Search.slice(0, 6).map((movie: any) => ({
-          title: movie.Title,
-          year: movie.Year,
-          imdbId: movie.imdbID,
-          poster: movie.Poster !== "N/A" ? movie.Poster : undefined,
-        }))
-        setTrendingMovies(movies)
+      for (const query of recentQueries.slice(0, 3)) {
+        const response = await fetch(`https://www.omdbapi.com/?s=${query}&type=movie&y=${currentYear - 1}&apikey=3fb40590`)
+        const data = await response.json()
+        
+        if (data.Response === "True" && data.Search) {
+          const movies = data.Search.slice(0, 4).map((movie: any) => ({
+            title: movie.Title,
+            year: movie.Year,
+            imdbId: movie.imdbID,
+            poster: movie.Poster !== "N/A" ? movie.Poster : undefined,
+          }))
+          allMovies.push(...movies)
+        }
       }
+      
+      // Remove duplicates and limit to 6 movies
+      const uniqueMovies = allMovies.filter((movie, index, self) => 
+        index === self.findIndex(m => m.imdbId === movie.imdbId)
+      ).slice(0, 6)
+      
+      // Get detailed info for ratings
+      const detailedMovies = await Promise.all(
+        uniqueMovies.map(async (movie) => {
+          try {
+            const detailResponse = await fetch(`https://www.omdbapi.com/?i=${movie.imdbId}&apikey=3fb40590`)
+            const detailData = await detailResponse.json()
+            
+            return {
+              ...movie,
+              genre: detailData.Genre,
+              director: detailData.Director,
+              imdbRating: detailData.imdbRating,
+              plot: detailData.Plot
+            }
+          } catch {
+            return movie
+          }
+        })
+      )
+      
+      // Sort by year (most recent first) and rating
+      const sortedMovies = detailedMovies.sort((a, b) => {
+        const yearDiff = parseInt(b.year) - parseInt(a.year)
+        if (yearDiff !== 0) return yearDiff
+        
+        const aRating = parseFloat(a.imdbRating || "0")
+        const bRating = parseFloat(b.imdbRating || "0")
+        return bRating - aRating
+      })
+      
+      setRecentlyReleasedMovies(sortedMovies)
     } catch (error) {
-      console.error("Failed to load trending movies:", error)
+      console.error("Failed to load recently released movies:", error)
     }
   }
 
@@ -125,13 +170,11 @@ export default function EnhancedMovieApp() {
     
     const newHistory = [query, ...searchHistory.filter(h => h !== query)].slice(0, 10)
     setSearchHistory(newHistory)
-    localStorage?.setItem("movieSearchHistory", JSON.stringify(newHistory))
   }
 
   const saveToWatchHistory = (movie: Movie) => {
     const newWatchHistory = [movie, ...watchHistory.filter(m => m.imdbId !== movie.imdbId)].slice(0, 20)
     setWatchHistory(newWatchHistory)
-    localStorage?.setItem("movieWatchHistory", JSON.stringify(newWatchHistory))
     
     // Update recommendations based on new watch history
     loadRecommendations(newWatchHistory)
@@ -143,7 +186,6 @@ export default function EnhancedMovieApp() {
       : [...favorites, imdbId]
     
     setFavorites(newFavorites)
-    localStorage?.setItem("movieFavorites", JSON.stringify(newFavorites))
   }
 
   const searchMovies = async (query: string) => {
@@ -490,15 +532,15 @@ export default function EnhancedMovieApp() {
           )}
         </div>
 
-        {/* Trending Movies */}
-        {!selectedMovie && trendingMovies.length > 0 && (
+        {/* Recently Released Movies */}
+        {!selectedMovie && recentlyReleasedMovies.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center mb-6">
-              <TrendingUp className="w-5 h-5 mr-3 text-orange-500" />
-              <h2 className="text-2xl font-bold text-white">Trending Now</h2>
+              <CalendarDays className="w-5 h-5 mr-3 text-green-500" />
+              <h2 className="text-2xl font-bold text-white">Recently Released</h2>
             </div>
             <div className="flex space-x-4 overflow-x-auto pb-4">
-              {trendingMovies.map((movie) => (
+              {recentlyReleasedMovies.map((movie) => (
                 <MovieCard key={movie.imdbId} movie={movie} showFavorite />
               ))}
             </div>
