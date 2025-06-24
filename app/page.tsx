@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Search, Filter, X, Star, Calendar, User, Clock, CalendarDays, Heart } from "lucide-react"
+import { useDatabase } from '@/hooks/useDatabase'
 
 interface Movie {
   title: string
@@ -30,9 +31,17 @@ export default function EnhancedMovieApp() {
   const [showAutocomplete, setShowAutocomplete] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [searchHistory, setSearchHistory] = useState<string[]>([])
-  const [watchHistory, setWatchHistory] = useState<Movie[]>([])
   const [recommendedMovies, setRecommendedMovies] = useState<Movie[]>([])
-  const [favorites, setFavorites] = useState<string[]>([])
+  
+  // Use Supabase database hook
+  const { 
+    favorites, 
+    watchHistory, 
+    isLoading, 
+    toggleFavorite, 
+    addToWatchHistory,
+    getFavoriteMovies 
+  } = useDatabase()
   
   const [filters, setFilters] = useState<SearchFilters>({
     genre: "",
@@ -52,17 +61,15 @@ export default function EnhancedMovieApp() {
 
   // Load data from memory on component mount
   useEffect(() => {
-    // Since localStorage is not available, we'll initialize with empty arrays
+    // Initialize search history from localStorage or memory
     const savedHistory: string[] = []
-    const savedWatchHistory: Movie[] = []
-    const savedFavorites: string[] = []
-    
     setSearchHistory(savedHistory)
-    setWatchHistory(savedWatchHistory)
-    setFavorites(savedFavorites)
     
-    loadRecommendations(savedWatchHistory)
-  }, [])
+    // Load recommendations based on watch history from database
+    if (watchHistory.length > 0) {
+      loadRecommendations(watchHistory)
+    }
+  }, [watchHistory])
 
   const loadRecommendations = (watchHistoryData: Movie[]) => {
     if (watchHistoryData.length === 0) return
@@ -104,20 +111,12 @@ export default function EnhancedMovieApp() {
     setSearchHistory(newHistory)
   }
 
-  const saveToWatchHistory = (movie: Movie) => {
-    const newWatchHistory = [movie, ...watchHistory.filter(m => m.imdbId !== movie.imdbId)].slice(0, 20)
-    setWatchHistory(newWatchHistory)
-    
-    // Update recommendations based on new watch history
-    loadRecommendations(newWatchHistory)
+  const saveToWatchHistory = async (movie: Movie) => {
+    await addToWatchHistory(movie)
   }
 
-  const toggleFavorite = (imdbId: string) => {
-    const newFavorites = favorites.includes(imdbId) 
-      ? favorites.filter(id => id !== imdbId)
-      : [...favorites, imdbId]
-    
-    setFavorites(newFavorites)
+  const handleToggleFavorite = async (movie: Movie) => {
+    await toggleFavorite(movie)
   }
 
   const searchMovies = async (query: string) => {
@@ -217,11 +216,11 @@ export default function EnhancedMovieApp() {
     }, 300)
   }
 
-  const selectMovie = (movie: Movie) => {
+  const selectMovie = async (movie: Movie) => {
     setSelectedMovie(movie)
     setSearchQuery(movie.title)
     setShowAutocomplete(false)
-    saveToWatchHistory(movie)
+    await saveToWatchHistory(movie)
   }
 
   const clearFilters = () => {
@@ -263,7 +262,7 @@ export default function EnhancedMovieApp() {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              toggleFavorite(movie.imdbId)
+              handleToggleFavorite(movie)
             }}
             className="absolute top-2 right-2 p-2 bg-black/70 rounded-full hover:bg-black/90 transition-colors"
           >
@@ -288,6 +287,13 @@ export default function EnhancedMovieApp() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#e0e0e0] relative overflow-x-hidden">
+      {/* Loading state */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="text-white">Loading...</div>
+        </div>
+      )}
+
       {/* Grain texture overlay */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]"
@@ -521,7 +527,7 @@ export default function EnhancedMovieApp() {
                   )}
                 </div>
                 <button
-                  onClick={() => toggleFavorite(selectedMovie.imdbId)}
+                  onClick={() => handleToggleFavorite(selectedMovie)}
                   className="p-3 bg-black/70 rounded-full hover:bg-black/90 transition-colors"
                 >
                   <Heart 
