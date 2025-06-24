@@ -296,7 +296,7 @@ export default function EnhancedMovieApp() {
         }}
       />
 
-      <div className="max-w-6xl mx-auto px-8 py-8">
+      <div className="max-w-6xl mx-auto px-8 py-8 relative">
         {/* Header */}
         <div className="text-center mb-12 animate-fade-in-up">
           <h1 className="text-5xl font-bold mb-2 bg-gradient-to-br from-white to-[#a0a0a0] bg-clip-text text-transparent tracking-tight">
@@ -311,7 +311,7 @@ export default function EnhancedMovieApp() {
         </div>
 
         {/* Search Container */}
-        <div ref={searchContainerRef} className="relative max-w-2xl mx-auto mb-8 animate-fade-in-up-delay-200">
+        <div ref={searchContainerRef} className="relative max-w-2xl mx-auto mb-8 animate-fade-in-up-delay-200 z-50">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#666] w-5 h-5" />
             <input
@@ -319,13 +319,13 @@ export default function EnhancedMovieApp() {
               value={searchQuery}
               onChange={handleSearchChange}
               onFocus={() => searchQuery.length >= 2 && setShowAutocomplete(true)}
-              className="w-full pl-12 pr-16 py-4 text-lg border-2 border-[#333] rounded-xl bg-black/80 backdrop-blur-md text-white outline-none transition-all duration-300 focus:border-[#555] focus:bg-black/90 focus:-translate-y-0.5 focus:shadow-2xl placeholder:text-[#666]"
+              className="w-full pl-12 pr-16 py-4 text-lg border-2 border-[#333] rounded-xl bg-black/80 backdrop-blur-md text-white outline-none transition-all duration-300 focus:border-[#555] focus:bg-black/90 focus:-translate-y-0.5 focus:shadow-2xl placeholder:text-[#666] relative z-10"
               placeholder="search for movies..."
               autoComplete="off"
             />
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`absolute right-4 top-1/2 transform -translate-y-1/2 p-2 rounded-lg transition-colors ${showFilters ? 'bg-[#555] text-white' : 'text-[#666] hover:text-white hover:bg-[#333]'}`}
+              className={`absolute right-4 top-1/2 transform -translate-y-1/2 p-2 rounded-lg transition-colors z-10 ${showFilters ? 'bg-[#555] text-white' : 'text-[#666] hover:text-white hover:bg-[#333]'}`}
             >
               <Filter className="w-4 h-4" />
             </button>
@@ -333,7 +333,7 @@ export default function EnhancedMovieApp() {
 
           {/* Filters */}
           {showFilters && (
-            <div className="mt-4 p-6 bg-black/90 border-2 border-[#333] rounded-xl backdrop-blur-xl">
+            <div className="mt-4 p-6 bg-black/90 border-2 border-[#333] rounded-xl backdrop-blur-xl relative z-50">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-white font-semibold">Filters</h3>
                 <button
@@ -401,7 +401,7 @@ export default function EnhancedMovieApp() {
 
           {/* Autocomplete Dropdown */}
           {showAutocomplete && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 border-2 border-[#333] rounded-xl backdrop-blur-xl max-h-96 overflow-y-auto z-[9999]">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 border-2 border-[#333] rounded-xl backdrop-blur-xl max-h-96 overflow-y-auto z-[100]">
               {/* Search History */}
               {searchHistory.length > 0 && searchQuery.length === 0 && (
                 <div className="p-4 border-b border-[#333]">
@@ -466,7 +466,7 @@ export default function EnhancedMovieApp() {
 
         {/* Recommended Movies */}
         {!selectedMovie && recommendedMovies.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-8 relative z-10">
             <div className="flex items-center mb-6">
               <Heart className="w-5 h-5 mr-3 text-pink-500" />
               <h2 className="text-2xl font-bold text-white">Recommended for You</h2>
@@ -481,7 +481,7 @@ export default function EnhancedMovieApp() {
 
         {/* Continue Watching */}
         {!selectedMovie && watchHistory.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-8 relative z-10">
             <div className="flex items-center mb-6">
               <Clock className="w-5 h-5 mr-3 text-blue-500" />
               <h2 className="text-2xl font-bold text-white">Continue Watching</h2>
@@ -495,7 +495,7 @@ export default function EnhancedMovieApp() {
         )}
 
         {/* Player Container */}
-        <div className="bg-black/80 border-2 border-[#333] rounded-2xl p-8 backdrop-blur-xl animate-fade-in-up-delay-400">
+        <div className="bg-black/80 border-2 border-[#333] rounded-2xl p-8 backdrop-blur-xl animate-fade-in-up-delay-400 relative z-10">
           {selectedMovie ? (
             <>
               <div className="flex justify-between items-start mb-6">
