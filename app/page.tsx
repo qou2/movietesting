@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Search, Filter, X, Star, Calendar, Clock, Heart, Play, Info, Tv, Film } from "lucide-react"
+import { Search, Filter, X, Star, Calendar, Clock, Heart, Play, Info, Tv, Film, User, Lock } from "lucide-react"
 import { useDatabase } from "@/hooks/useDatabase"
 import SeasonEpisodeSelector from "@/components/season-episode-selector"
 
@@ -639,6 +639,24 @@ export default function EnhancedMovieApp() {
               ← back to qou2.xyz
             </a>
           </div>
+        </div>
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-center space-x-4 mb-8 animate-fade-in-up-delay-100">
+          <button
+            onClick={() => (window.location.href = "/account")}
+            className="bg-black/60 border-2 border-purple-500/30 text-purple-300 px-6 py-3 rounded-xl font-medium hover:bg-purple-600/20 hover:border-purple-500 transition-all duration-300 backdrop-blur-xl flex items-center space-x-2"
+          >
+            <User className="w-5 h-5" />
+            <span>My Account</span>
+          </button>
+          <button
+            onClick={() => (window.location.href = "/admin")}
+            className="bg-black/60 border-2 border-red-500/30 text-red-300 px-6 py-3 rounded-xl font-medium hover:bg-red-600/20 hover:border-red-500 transition-all duration-300 backdrop-blur-xl flex items-center space-x-2"
+          >
+            <Lock className="w-5 h-5" />
+            <span>Admin</span>
+          </button>
         </div>
 
         {/* Search Container */}
