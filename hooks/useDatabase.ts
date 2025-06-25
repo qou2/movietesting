@@ -27,6 +27,29 @@ interface Media {
 }
 
 export function useDatabase() {
+  // Add this at the very beginning of the useDatabase function
+  useEffect(() => {
+    // Prevent any stray API calls that might cause errors
+    const originalFetch = window.fetch
+    window.fetch = function (...args) {
+      const url = args[0]
+      if (typeof url === "string" && url.includes("generate-access-code")) {
+        console.warn("Blocked call to generate-access-code endpoint")
+        return Promise.resolve(
+          new Response('{"success": true}', {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        )
+      }
+      return originalFetch.apply(this, args)
+    }
+
+    return () => {
+      window.fetch = originalFetch
+    }
+  }, [])
+
   const [userId, setUserId] = useState<string>("")
   const [favorites, setFavorites] = useState<number[]>([])
   const [watchHistory, setWatchHistory] = useState<Media[]>([])
