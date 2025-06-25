@@ -60,6 +60,14 @@ export default function SecurePasswordProtection({ children }: PasswordProtectio
     setError("")
 
     try {
+      // Get or create a user ID for tracking
+      let userId = localStorage.getItem("movie_app_user_id")
+      if (!userId) {
+        // Generate a simple tracking ID (not a UUID since the field might be nullable)
+        userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        localStorage.setItem("movie_app_user_id", userId)
+      }
+
       // First, try to verify as an access code
       const accessCodeResponse = await fetch("/api/verify-access-code", {
         method: "POST",
@@ -68,7 +76,7 @@ export default function SecurePasswordProtection({ children }: PasswordProtectio
         },
         body: JSON.stringify({
           code: password,
-          userId: "anonymous-user", // For access code verification
+          userId: null, // Don't pass userId to avoid UUID issues
         }),
       })
 
