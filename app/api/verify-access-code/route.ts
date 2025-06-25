@@ -63,11 +63,23 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ Access code is valid, marking as used...")
 
+    // Prepare the used_by value - only set if we have a valid UUID
+    let usedByValue = null
+    if (
+      userId &&
+      userId !== "anonymous-user" &&
+      userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    ) {
+      usedByValue = userId
+    }
+
+    console.log("👤 Used by value:", usedByValue ? "[UUID]" : "null")
+
     // Mark the code as used
     const { error: updateError } = await supabase
       .from("access_codes")
       .update({
-        used_by: userId || "anonymous",
+        used_by: usedByValue,
         used_at: new Date().toISOString(),
         is_active: false,
       })
