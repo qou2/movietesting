@@ -29,18 +29,21 @@ interface Media {
 export function useDatabase() {
   // Add this at the very beginning of the useDatabase function
   useEffect(() => {
-    // Prevent any stray API calls that might cause errors
+    // Prevent any stray API calls that might cause errors, but allow access code generation
     const originalFetch = window.fetch
     window.fetch = function (...args) {
       const url = args[0]
-      if (typeof url === "string" && url.includes("generate-access-code")) {
-        console.warn("Blocked call to generate-access-code endpoint")
-        return Promise.resolve(
-          new Response('{"success": true}', {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }),
-        )
+      if (typeof url === "string") {
+        // Only block specific problematic endpoints, not the access code generation
+        if (url.includes("generate-new-access-code") && !url.includes("generate-access-code")) {
+          console.warn("Blocked call to generate-new-access-code endpoint")
+          return Promise.resolve(
+            new Response('{"success": true}', {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          )
+        }
       }
       return originalFetch.apply(this, args)
     }
