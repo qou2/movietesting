@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react"
 import { Search, Filter, X, Star, Calendar, Clock, Heart, Play, Info, Tv, Film, User, Lock } from "lucide-react"
 import { useDatabase } from "@/hooks/useDatabase"
 import SeasonEpisodeSelector from "@/components/season-episode-selector"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface Media {
   title: string
@@ -43,6 +44,8 @@ const TMDB_BASE_URL = "https://api.themoviedb.org/3"
 const TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p"
 
 export default function EnhancedMovieApp() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<Media[]>([])
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null)
@@ -136,6 +139,60 @@ export default function EnhancedMovieApp() {
       window.fetch = originalFetch
     }
   }, [])
+
+  // Check for direct media loading from URL params
+  useEffect(() => {
+    const watchId = searchParams.get("watch")
+    const mediaType = searchParams.get("type") as "movie" | "tv"
+
+    if (watchId && mediaType) {
+      loadMediaById(Number.parseInt(watchId), mediaType)
+    }
+  }, [searchParams])
+
+  const loadMediaById = async (tmdbId: number, mediaType: "movie" | "tv") => {
+    try {
+      const endpoint = mediaType === "tv" ? "tv" : "movie"
+      const response = await fetch(`${TMDB_BASE_URL}/${endpoint}/${tmdbId}`, {
+        headers: {
+          Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      })
+      const detailData = await response.json()
+
+      const media: Media = {
+        title: detailData.title || detailData.name,
+        year: parseYear(detailData.release_date || detailData.first_air_date),
+        tmdbId: detailData.id,
+        poster: detailData.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${detailData.poster_path}` : undefined,
+        backdrop: detailData.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${detailData.backdrop_path}` : undefined,
+        overview: detailData.overview,
+        rating: detailData.vote_average,
+        releaseDate: detailData.release_date || detailData.first_air_date,
+        mediaType,
+        genre: detailData.genres?.map((g: any) => g.name).join(", "),
+        runtime: detailData.runtime || detailData.episode_run_time?.[0],
+        imdbId: detailData.imdb_id,
+        totalSeasons: detailData.number_of_seasons,
+        totalEpisodes: detailData.number_of_episodes,
+      }
+
+      setSelectedMedia(media)
+      setSearchQuery(media.title)
+
+      // Reset TV show selections
+      if (mediaType === "tv") {
+        setSelectedSeason(1)
+        setSelectedEpisode(1)
+        setSelectedEpisodeData(null)
+      } else {
+        addToWatchHistory(media)
+      }
+    } catch (error) {
+      console.error("Failed to load media:", error)
+    }
+  }
 
   // Load data and trending content on component mount
   useEffect(() => {
@@ -509,6 +566,18 @@ export default function EnhancedMovieApp() {
     })
   }
 
+  const handleBrowseWithFilters = () => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.set("q", searchQuery)
+    if (filters.genre) params.set("genre", filters.genre)
+    if (filters.yearFrom) params.set("year_from", filters.yearFrom)
+    if (filters.yearTo) params.set("year_to", filters.yearTo)
+    if (filters.minRating) params.set("min_rating", filters.minRating)
+    if (filters.mediaType !== "all") params.set("media_type", filters.mediaType)
+
+    router.push(`/browse?${params.toString()}`)
+  }
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -685,13 +754,21 @@ export default function EnhancedMovieApp() {
             <div className="mt-4 p-6 bg-black/80 border-2 border-purple-500/30 rounded-2xl backdrop-blur-xl relative z-50">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-white font-semibold">Advanced Filters</h3>
-                <button
-                  onClick={clearFilters}
-                  className="text-[#666] hover:text-white text-sm flex items-center transition-colors"
-                >
-                  <X className="w-4 h-4 mr-1" />
-                  Clear
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleBrowseWithFilters}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                  >
+                    Browse All Results
+                  </button>
+                  <button
+                    onClick={clearFilters}
+                    className="text-[#666] hover:text-white text-sm flex items-center transition-colors"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Clear
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -705,6 +782,22 @@ export default function EnhancedMovieApp() {
                     <option value="all">Movies & TV Shows</option>
                     <option value="movie">Movies Only</option>
                     <option value="tv">TV Shows Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-[#888] mb-2">Genre</label>
+                  <select
+                    value={filters.genre}
+                    onChange={(e) => setFilters({ ...filters, genre: e.target.value })}
+                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                  >
+                    <option value="">All Genres</option>
+                    {genres.map((genre) => (
+                      <option key={genre.id} value={genre.name}>
+                        {genre.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -723,25 +816,23 @@ export default function EnhancedMovieApp() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Year From</label>
-                  <input
-                    type="number"
-                    value={filters.yearFrom}
-                    onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })}
-                    placeholder="e.g. 2000"
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-[#888] mb-2">Year To</label>
-                  <input
-                    type="number"
-                    value={filters.yearTo}
-                    onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })}
-                    placeholder="e.g. 2024"
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
-                  />
+                  <label className="block text-sm text-[#888] mb-2">Year Range</label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="number"
+                      value={filters.yearFrom}
+                      onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })}
+                      placeholder="From"
+                      className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    />
+                    <input
+                      type="number"
+                      value={filters.yearTo}
+                      onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })}
+                      placeholder="To"
+                      className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1004,6 +1095,10 @@ export default function EnhancedMovieApp() {
 
         .animate-fade-in-up {
           animation: fade-in-up 0.8s ease-out;
+        }
+
+        .animate-fade-in-up-delay-100 {
+          animation: fade-in-up 0.8s ease-out 0.1s both;
         }
 
         .animate-fade-in-up-delay-200 {
