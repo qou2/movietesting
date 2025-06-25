@@ -21,6 +21,7 @@ import {
   Edit3,
   Save,
   X,
+  AlertCircle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -58,6 +59,7 @@ export default function AccountPage() {
   const [isEditingUsername, setIsEditingUsername] = useState(false)
   const [newUsername, setNewUsername] = useState("")
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   // Calculate user statistics
   useEffect(() => {
@@ -113,7 +115,11 @@ export default function AccountPage() {
     }
 
     setIsGenerating(true)
+    setGenerationError(null)
+
     try {
+      console.log("Generating access code for user:", userId)
+
       const response = await fetch("/api/generate-access-code", {
         method: "POST",
         headers: {
@@ -124,7 +130,9 @@ export default function AccountPage() {
 
       const data = await response.json()
 
-      if (data.success) {
+      console.log("Access code response:", data)
+
+      if (response.ok && data.success) {
         setAccessCode({
           code: data.code,
           expiresAt: data.expiresAt,
@@ -134,13 +142,22 @@ export default function AccountPage() {
           description: "Your one-time access code has been created successfully.",
         })
       } else {
-        throw new Error(data.error || "Failed to generate access code")
+        const errorMessage = data.error || `Server error: ${response.status}`
+        console.error("Access code generation failed:", errorMessage, data.details)
+        setGenerationError(errorMessage)
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("Error generating access code:", error)
+      const errorMessage = "Failed to generate access code. Please try again."
+      setGenerationError(errorMessage)
       toast({
         title: "Error",
-        description: "Failed to generate access code. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
@@ -472,6 +489,13 @@ export default function AccountPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {generationError && (
+              <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center">
+                <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                {generationError}
+              </div>
+            )}
+
             {!accessCode ? (
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
