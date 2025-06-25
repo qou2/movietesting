@@ -15,18 +15,53 @@ export type Database = {
       user_profiles: {
         Row: {
           id: string
+          username: string | null
           created_at: string
           last_active: string
         }
         Insert: {
           id?: string
+          username?: string | null
           created_at?: string
           last_active?: string
         }
         Update: {
           id?: string
+          username?: string | null
           created_at?: string
           last_active?: string
+        }
+      }
+      access_codes: {
+        Row: {
+          id: string
+          code: string
+          created_by: string
+          created_at: string
+          expires_at: string
+          used_by: string | null
+          used_at: string | null
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          code: string
+          created_by: string
+          created_at?: string
+          expires_at: string
+          used_by?: string | null
+          used_at?: string | null
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          code?: string
+          created_by?: string
+          created_at?: string
+          expires_at?: string
+          used_by?: string | null
+          used_at?: string | null
+          is_active?: boolean
         }
       }
       favorites: {
