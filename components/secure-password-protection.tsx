@@ -60,7 +60,34 @@ export default function SecurePasswordProtection({ children }: PasswordProtectio
     setError("")
 
     try {
-      const response = await fetch("/api/verify-password", {
+      // First, try to verify as an access code
+      const accessCodeResponse = await fetch("/api/verify-access-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code: password,
+          userId: "anonymous-user", // For access code verification
+        }),
+      })
+
+      if (accessCodeResponse.ok) {
+        const accessCodeData = await accessCodeResponse.json()
+        if (accessCodeData.success) {
+          // Access code is valid
+          setIsAuthenticated(true)
+          localStorage.setItem("movie_app_authenticated", "true")
+          localStorage.setItem("movie_app_auth_time", Date.now().toString())
+          localStorage.setItem("movie_app_access_method", "access_code")
+          setError("")
+          setAttempts(0)
+          return
+        }
+      }
+
+      // If access code verification failed, try main password
+      const passwordResponse = await fetch("/api/verify-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,22 +95,23 @@ export default function SecurePasswordProtection({ children }: PasswordProtectio
         body: JSON.stringify({ password }),
       })
 
-      const data = await response.json()
+      const passwordData = await passwordResponse.json()
 
-      if (response.ok && data.success) {
+      if (passwordResponse.ok && passwordData.success) {
         setIsAuthenticated(true)
         localStorage.setItem("movie_app_authenticated", "true")
         localStorage.setItem("movie_app_auth_time", Date.now().toString())
+        localStorage.setItem("movie_app_access_method", "main_password")
         setError("")
         setAttempts(0)
       } else {
         const newAttempts = attempts + 1
         setAttempts(newAttempts)
 
-        if (response.status === 429) {
+        if (passwordResponse.status === 429) {
           setError("Too many failed attempts. Please try again later.")
         } else {
-          setError(`Incorrect password. ${5 - newAttempts} attempts remaining.`)
+          setError(`Incorrect password or access code. ${5 - newAttempts} attempts remaining.`)
         }
         setPassword("")
       }
@@ -141,7 +169,7 @@ export default function SecurePasswordProtection({ children }: PasswordProtectio
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-[#ccc] mb-2">
-                  Access Code
+                  Password or Access Code
                 </label>
                 <div className="relative">
                   <input
@@ -150,7 +178,7 @@ export default function SecurePasswordProtection({ children }: PasswordProtectio
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-4 py-3 pr-12 bg-black/60 border-2 border-purple-500/30 rounded-xl text-white placeholder-[#666] focus:border-purple-500 focus:outline-none transition-colors"
-                    placeholder="Enter access code"
+                    placeholder="Enter password or access code"
                     required
                     disabled={isSubmitting || attempts >= 5}
                   />
