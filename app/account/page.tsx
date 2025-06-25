@@ -7,21 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
-import {
-  User,
-  Film,
-  Tv,
-  Clock,
-  Key,
-  Copy,
-  CheckCircle,
-  Calendar,
-  BarChart3,
-  Trophy,
-  Edit3,
-  Save,
-  X,
-} from "lucide-react"
+import { User, Film, Tv, Clock, Copy, Calendar, BarChart3, Trophy, Edit3, Save, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface AccessCode {
@@ -50,14 +36,11 @@ interface LeaderboardEntry {
 export default function AccountPage() {
   const { userId, username, watchHistory, favorites, isLoading, updateUsername } = useDatabase()
   const { toast } = useToast()
-  const [accessCode, setAccessCode] = useState<AccessCode | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [userStats, setUserStats] = useState<UserStats | null>(null)
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [isEditingUsername, setIsEditingUsername] = useState(false)
   const [newUsername, setNewUsername] = useState("")
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false)
+  const [userStats, setUserStats] = useState<UserStats | null>(null)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
 
   // Calculate user statistics
   useEffect(() => {
@@ -101,52 +84,6 @@ export default function AccountPage() {
 
     loadLeaderboard()
   }, [])
-
-  const generateAccessCode = async () => {
-    if (!userId) {
-      toast({
-        title: "Error",
-        description: "User not authenticated",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsGenerating(true)
-    try {
-      const response = await fetch("/api/generate-access-code", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        setAccessCode({
-          code: data.code,
-          expiresAt: data.expiresAt,
-        })
-        toast({
-          title: "Access Code Generated",
-          description: "Your one-time access code has been created successfully.",
-        })
-      } else {
-        throw new Error(data.error || "Failed to generate access code")
-      }
-    } catch (error) {
-      console.error("Error generating access code:", error)
-      toast({
-        title: "Error",
-        description: "Failed to generate access code. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsGenerating(false)
-    }
-  }
 
   const handleUsernameEdit = () => {
     setNewUsername(username)
@@ -193,33 +130,6 @@ export default function AccountPage() {
   const handleUsernameCancel = () => {
     setIsEditingUsername(false)
     setNewUsername("")
-  }
-
-  const copyToClipboard = async () => {
-    if (!accessCode) return
-
-    try {
-      await navigator.clipboard.writeText(accessCode.code)
-      setCopied(true)
-      toast({
-        title: "Copied!",
-        description: "Access code copied to clipboard.",
-      })
-      setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to copy to clipboard.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const formatExpiryTime = (expiresAt: string) => {
-    const expiry = new Date(expiresAt)
-    const now = new Date()
-    const diffHours = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60))
-    return `${diffHours} hours`
   }
 
   const getUserRank = () => {
@@ -459,86 +369,35 @@ export default function AccountPage() {
           </CardContent>
         </Card>
 
-        {/* Access Code Generator */}
+        {/* User Statistics Summary */}
         <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="flex items-center text-white">
-              <Key className="w-5 h-5 mr-2 text-purple-400" />
-              One-Time Access Code
+              <BarChart3 className="w-5 h-5 mr-2 text-purple-400" />
+              Activity Summary
             </CardTitle>
-            <CardDescription className="text-[#888]">
-              Generate a temporary access code to share with others. Each code can only be used once and expires in 24
-              hours.
-            </CardDescription>
+            <CardDescription className="text-[#888]">Your movie time journey</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {!accessCode ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Key className="w-8 h-8 text-purple-400" />
+          <CardContent className="space-y-4">
+            {userStats && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl border border-purple-500/30">
+                  <div className="text-3xl font-bold text-purple-300 mb-2">{userStats.totalWatched}</div>
+                  <div className="text-sm text-[#888]">Total Items Watched</div>
                 </div>
-                <p className="text-[#888] mb-4">No active access code</p>
-                <Button
-                  onClick={generateAccessCode}
-                  disabled={isGenerating}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                >
-                  {isGenerating ? "Generating..." : "Generate Access Code"}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-6 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl border border-purple-500/30">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Active Access Code</h3>
-                    <Badge className="bg-green-600/20 text-green-300 border-green-500/30">Active</Badge>
-                  </div>
-
-                  <div className="flex items-center space-x-3 mb-4">
-                    <code className="bg-black/40 text-purple-300 px-4 py-3 rounded-lg text-xl font-mono tracking-wider flex-1 text-center border border-purple-500/30">
-                      {accessCode.code}
-                    </code>
-                    <Button
-                      onClick={copyToClipboard}
-                      variant="outline"
-                      className="border-purple-500/30 hover:bg-purple-600/20"
-                    >
-                      {copied ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#888]">Expires in: {formatExpiryTime(accessCode.expiresAt)}</span>
-                    <Button
-                      onClick={generateAccessCode}
-                      variant="ghost"
-                      size="sm"
-                      disabled={isGenerating}
-                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-600/20"
-                    >
-                      Generate New
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-yellow-600/10 border border-yellow-500/30 rounded-lg">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-black text-xs font-bold">!</span>
-                    </div>
-                    <div className="text-sm text-yellow-200">
-                      <p className="font-medium mb-1">Important:</p>
-                      <ul className="space-y-1 text-yellow-300/80">
-                        <li>• This code can only be used once</li>
-                        <li>• It will expire in 24 hours</li>
-                        <li>• Generating a new code will deactivate the current one</li>
-                        <li>• Share this code securely with trusted users only</li>
-                      </ul>
-                    </div>
-                  </div>
+                <div className="text-center p-4 bg-gradient-to-r from-blue-600/20 to-cyan-600/20 rounded-xl border border-blue-500/30">
+                  <div className="text-3xl font-bold text-blue-300 mb-2">~{userStats.watchTimeHours}h</div>
+                  <div className="text-sm text-[#888]">Estimated Watch Time</div>
                 </div>
               </div>
             )}
+
+            <div className="p-4 bg-gradient-to-r from-green-600/10 to-emerald-600/10 border border-green-500/30 rounded-xl">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-green-300 mb-1">Keep Watching!</div>
+                <div className="text-sm text-[#888]">Discover new movies and TV shows to expand your collection</div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
