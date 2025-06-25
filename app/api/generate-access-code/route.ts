@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { supabaseServer } from "@/lib/supabase-server"
 
 // Generate a random 12-character alphanumeric code
 function generateAccessCode(): string {
@@ -19,6 +19,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
     }
 
+    // Verify the user exists
+    const { data: userExists, error: userError } = await supabaseServer
+      .from("user_profiles")
+      .select("id")
+      .eq("id", userId)
+      .single()
+
+    if (userError || !userExists) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
     // Generate a unique access code
     let accessCode: string
     let isUnique = false
@@ -30,7 +41,7 @@ export async function POST(request: NextRequest) {
       attempts++
 
       // Check if code already exists
-      const { data: existingCode, error: checkError } = await supabase
+      const { data: existingCode, error: checkError } = await supabaseServer
         .from("access_codes")
         .select("id")
         .eq("code", accessCode)
@@ -52,7 +63,7 @@ export async function POST(request: NextRequest) {
     } while (!isUnique)
 
     // Deactivate any existing active codes for this user
-    const { error: deactivateError } = await supabase
+    const { error: deactivateError } = await supabaseServer
       .from("access_codes")
       .update({ is_active: false })
       .eq("created_by", userId)
@@ -66,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Insert the new access code
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from("access_codes")
       .insert({
         code: accessCode,
