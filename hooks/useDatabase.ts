@@ -155,7 +155,6 @@ export function useDatabase() {
         setWatchHistory(media)
       }
 
-      // Add this to loadUserData function after loading favorites and watch history
       // Load user profile for username
       const { data: profileData, error: profileError } = await supabase
         .from("user_profiles")
@@ -346,6 +345,8 @@ export function useDatabase() {
       const data = await response.json()
 
       if (data.success) {
+        // Update local state
+        setUsername(newUsername)
         return { success: true }
       } else {
         return { success: false, error: data.error }
