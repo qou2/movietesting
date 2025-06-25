@@ -120,6 +120,23 @@ export default function EnhancedMovieApp() {
     }
   }
 
+  useEffect(() => {
+    // Prevent any stray API calls that might cause errors
+    const originalFetch = window.fetch
+    window.fetch = function (...args) {
+      const url = args[0]
+      if (typeof url === "string" && url.includes("generate-access-code")) {
+        console.warn("Blocked call to non-existent generate-access-code endpoint")
+        return Promise.reject(new Error("Endpoint not available"))
+      }
+      return originalFetch.apply(this, args)
+    }
+
+    return () => {
+      window.fetch = originalFetch
+    }
+  }, [])
+
   // Load data and trending content on component mount
   useEffect(() => {
     loadTrendingContent()
