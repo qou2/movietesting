@@ -51,6 +51,7 @@ export function useDatabase() {
   }, [])
 
   const [userId, setUserId] = useState<string>("")
+  const [username, setUsername] = useState<string>("")
   const [favorites, setFavorites] = useState<number[]>([])
   const [watchHistory, setWatchHistory] = useState<Media[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -152,6 +153,21 @@ export function useDatabase() {
           })) || []
 
         setWatchHistory(media)
+      }
+
+      // Add this to loadUserData function after loading favorites and watch history
+      // Load user profile for username
+      const { data: profileData, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("username")
+        .eq("id", uid)
+        .single()
+
+      if (profileError) {
+        console.error("❌ Error loading user profile:", profileError)
+      } else {
+        console.log("👤 Loaded username:", profileData?.username)
+        setUsername(profileData?.username || "")
       }
     } catch (error) {
       console.error("💥 Error loading user data:", error)
@@ -313,14 +329,43 @@ export function useDatabase() {
     }
   }
 
+  const updateUsername = async (newUsername: string) => {
+    if (!userId) {
+      return { success: false, error: "No user ID available" }
+    }
+
+    try {
+      const response = await fetch("/api/update-username", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, username: newUsername }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        return { success: true }
+      } else {
+        return { success: false, error: data.error }
+      }
+    } catch (error) {
+      console.error("Error updating username:", error)
+      return { success: false, error: "Failed to update username" }
+    }
+  }
+
   return {
     userId,
+    username,
     favorites,
     watchHistory,
     isLoading,
     toggleFavorite,
     addToWatchHistory,
     getFavoriteMedia,
+    updateUsername,
     loadUserData: () => loadUserData(userId),
   }
 }
