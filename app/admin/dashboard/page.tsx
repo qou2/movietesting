@@ -69,6 +69,7 @@ export default function AdminDashboard() {
     title: string
     message: string
   } | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Inline styles
   const containerStyle: React.CSSProperties = {
@@ -183,29 +184,62 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Load admin statistics
-      const statsResponse = await fetch("/api/admin/stats")
+      setIsLoading(true)
+
+      // Add cache busting timestamp
+      const timestamp = Date.now()
+
+      // Load admin statistics with cache busting
+      const statsResponse = await fetch(`/api/admin/stats?t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       if (statsResponse.ok) {
         const statsData = await statsResponse.json()
+        console.log("Stats loaded:", statsData)
         setStats(statsData.data)
+      } else {
+        console.error("Failed to load stats:", statsResponse.status)
       }
 
-      // Load users data
-      const usersResponse = await fetch("/api/admin/users")
+      // Load users data with cache busting
+      const usersResponse = await fetch(`/api/admin/users?t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       if (usersResponse.ok) {
         const usersData = await usersResponse.json()
+        console.log("Users loaded:", usersData.data?.length || 0, "users")
         setUsers(usersData.data || [])
+      } else {
+        console.error("Failed to load users:", usersResponse.status)
       }
 
-      // Load access codes
-      const codesResponse = await fetch("/api/admin/access-codes")
+      // Load access codes with cache busting
+      const codesResponse = await fetch(`/api/admin/access-codes?t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       if (codesResponse.ok) {
         const codesData = await codesResponse.json()
+        console.log("Access codes loaded:", codesData.data?.length || 0, "codes")
         setAccessCodes(codesData.data || [])
+      } else {
+        console.error("Failed to load access codes:", codesResponse.status)
       }
+
+      showMessage("success", "Dashboard data refreshed successfully")
     } catch (error) {
       console.error("Error loading dashboard data:", error)
       showMessage("error", "Failed to load dashboard data")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -277,6 +311,12 @@ export default function AdminDashboard() {
     } else if (confirmDialog.type === "remove") {
       removeUser(confirmDialog.id)
     }
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await loadDashboardData()
+    setIsRefreshing(false)
   }
 
   if (isLoading) {
@@ -400,16 +440,24 @@ export default function AdminDashboard() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <button
-              onClick={loadDashboardData}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
               style={{
                 ...buttonStyle,
-                background: "rgba(239, 68, 68, 0.2)",
+                background: isRefreshing ? "rgba(156, 163, 175, 0.2)" : "rgba(239, 68, 68, 0.2)",
                 border: "1px solid rgba(239, 68, 68, 0.3)",
-                color: "#ef4444",
+                color: isRefreshing ? "#9ca3af" : "#ef4444",
+                cursor: isRefreshing ? "not-allowed" : "pointer",
               }}
             >
-              <RefreshCw style={{ width: "1rem", height: "1rem" }} />
-              Refresh
+              <RefreshCw
+                style={{
+                  width: "1rem",
+                  height: "1rem",
+                  animation: isRefreshing ? "spin 1s linear infinite" : "none",
+                }}
+              />
+              {isRefreshing ? "Refreshing..." : "Refresh"}
             </button>
             <button
               onClick={handleLogout}
@@ -840,6 +888,15 @@ export default function AdminDashboard() {
           to {
             transform: translateX(0);
             opacity: 1;
+          }
+        }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
           }
         }
       `}</style>
