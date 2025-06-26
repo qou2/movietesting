@@ -96,6 +96,7 @@ export async function authenticateUser(username: string, password: string): Prom
 export async function createUser(username: string, password: string, accessCode: string): Promise<AuthResult> {
   try {
     console.log("Starting user creation for:", username)
+    console.log("Access code provided:", accessCode ? "[PROVIDED]" : "[MISSING]")
 
     // Check Supabase connection
     if (!supabase) {
@@ -103,38 +104,47 @@ export async function createUser(username: string, password: string, accessCode:
       return { success: false, error: "Database connection error" }
     }
 
-    // Verify access code first
-    console.log("Verifying access code...")
-    const { data: codeData, error: codeError } = await supabase
-      .from("access_codes")
-      .select("*")
-      .eq("code", accessCode.toUpperCase())
-      .eq("is_active", true)
-      .single()
+    // Check if it's the master password first
+    const masterPassword = process.env.MOVIE_APP_PASSWORD
+    console.log("Master password configured:", masterPassword ? "YES" : "NO")
 
-    if (codeError) {
-      console.error("Access code query error:", codeError)
-      if (codeError.code === "PGRST116") {
+    if (masterPassword && accessCode === masterPassword) {
+      console.log("Using master password for registration")
+      // Skip access code verification for master password
+    } else {
+      // Verify access code from database
+      console.log("Verifying access code from database...")
+      const { data: codeData, error: codeError } = await supabase
+        .from("access_codes")
+        .select("*")
+        .eq("code", accessCode.toUpperCase())
+        .eq("is_active", true)
+        .single()
+
+      if (codeError) {
+        console.error("Access code query error:", codeError)
+        if (codeError.code === "PGRST116") {
+          return { success: false, error: "Invalid or expired access code" }
+        }
+        return { success: false, error: "Database error: " + codeError.message }
+      }
+
+      if (!codeData) {
+        console.log("Access code not found in database")
         return { success: false, error: "Invalid or expired access code" }
       }
-      return { success: false, error: "Database error: " + codeError.message }
-    }
 
-    if (!codeData) {
-      console.log("Access code not found")
-      return { success: false, error: "Invalid or expired access code" }
-    }
+      // Check if code has expired
+      if (new Date(codeData.expires_at) < new Date()) {
+        console.log("Access code expired")
+        return { success: false, error: "Access code has expired" }
+      }
 
-    // Check if code has expired
-    if (new Date(codeData.expires_at) < new Date()) {
-      console.log("Access code expired")
-      return { success: false, error: "Access code has expired" }
-    }
-
-    // Check if code has already been used
-    if (codeData.used_at) {
-      console.log("Access code already used")
-      return { success: false, error: "Access code has already been used" }
+      // Check if code has already been used
+      if (codeData.used_at) {
+        console.log("Access code already used")
+        return { success: false, error: "Access code has already been used" }
+      }
     }
 
     // Check if username already exists
@@ -168,20 +178,30 @@ export async function createUser(username: string, password: string, accessCode:
       return { success: false, error: "Failed to create account: " + (userError?.message || "Unknown error") }
     }
 
-    // Mark access code as used
-    console.log("Marking access code as used...")
-    const { error: codeUpdateError } = await supabase
-      .from("access_codes")
-      .update({
-        used_by: newUser.id,
-        used_at: new Date().toISOString(),
-        is_active: false,
-      })
-      .eq("id", codeData.id)
+    // Mark access code as used (only if it's not the master password)
+    if (accessCode !== masterPassword) {
+      console.log("Marking access code as used...")
+      const { data: codeData } = await supabase
+        .from("access_codes")
+        .select("id")
+        .eq("code", accessCode.toUpperCase())
+        .single()
 
-    if (codeUpdateError) {
-      console.warn("Failed to update access code:", codeUpdateError)
-      // Don't fail the registration for this
+      if (codeData) {
+        const { error: codeUpdateError } = await supabase
+          .from("access_codes")
+          .update({
+            used_by: newUser.id,
+            used_at: new Date().toISOString(),
+            is_active: false,
+          })
+          .eq("id", codeData.id)
+
+        if (codeUpdateError) {
+          console.warn("Failed to update access code:", codeUpdateError)
+          // Don't fail the registration for this
+        }
+      }
     }
 
     console.log("User created successfully")
