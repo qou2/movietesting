@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Movie Time - Private Access",
   description: "Private Access",
-  generator: "qou2.xyz",
+  generator: "qou2",
 }
 
 export default function RootLayout({
