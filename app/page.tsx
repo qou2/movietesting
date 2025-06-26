@@ -289,8 +289,11 @@ export default function EnhancedMovieApp() {
       try {
         const response = await fetch("/api/auth/me")
         if (response.ok) {
-          const userData = await response.json()
-          setCurrentUser(userData)
+          const data = await response.json()
+          console.log("User data received:", data) // Debug log
+          if (data.success && data.user) {
+            setCurrentUser({ username: data.user.username })
+          }
         }
       } catch (error) {
         console.error("Failed to fetch user:", error)
@@ -544,9 +547,9 @@ export default function EnhancedMovieApp() {
           year: parseYear(show.first_air_date),
           tmdbId: show.id,
           poster: show.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${show.poster_path}` : undefined,
-          backdrop: movie.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : undefined,
-          overview: movie.overview,
-          rating: movie.vote_average,
+          backdrop: show.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : undefined,
+          overview: show.overview,
+          rating: show.vote_average,
           releaseDate: show.first_air_date,
           mediaType: "tv" as const,
         }))
@@ -902,7 +905,7 @@ export default function EnhancedMovieApp() {
           <p style={{ color: "#888", fontSize: "1.125rem", fontWeight: "normal", marginBottom: "0.5rem" }}>
             {userLoading ? (
               "loading..."
-            ) : currentUser ? (
+            ) : currentUser?.username ? (
               <>
                 welcome back, <span style={{ color: "#a855f7", fontWeight: "600" }}>{currentUser.username}</span> •
                 unlimited streaming
