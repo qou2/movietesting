@@ -22,7 +22,7 @@ export async function GET() {
         createdBy: code.created_by,
         createdAt: code.created_at,
         expiresAt: code.expires_at,
-        isUsed: code.is_used,
+        isUsed: code.is_used || !!code.used_at, // Fallback to used_at if is_used is null
         usedBy: code.used_by,
         usedAt: code.used_at,
       })) || []
