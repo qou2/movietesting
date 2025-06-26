@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -17,10 +19,6 @@ import {
   Heart,
   TrendingUp,
 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/hooks/use-toast"
 
 interface AdminStats {
   totalUsers: number
@@ -55,13 +53,69 @@ interface AccessCodeData {
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const { toast } = useToast()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [users, setUsers] = useState<UserData[]>([])
   const [accessCodes, setAccessCodes] = useState<AccessCodeData[]>([])
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "codes" | "settings">("overview")
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Inline styles
+  const containerStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+    color: "#e0e0e0",
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+    padding: "2rem",
+  }
+
+  const cardStyle: React.CSSProperties = {
+    background: "rgba(0, 0, 0, 0.6)",
+    border: "2px solid rgba(239, 68, 68, 0.3)",
+    borderRadius: "1.5rem",
+    backdropFilter: "blur(12px)",
+  }
+
+  const headerStyle: React.CSSProperties = {
+    padding: "1.5rem",
+    borderBottom: "1px solid rgba(239, 68, 68, 0.2)",
+  }
+
+  const contentStyle: React.CSSProperties = {
+    padding: "1.5rem",
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    background: "linear-gradient(135deg, #dc2626, #f97316)",
+    color: "white",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "0.75rem",
+    border: "none",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  }
+
+  const tabStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "0.75rem",
+    fontWeight: "500",
+    transition: "all 0.3s ease",
+    border: "2px solid",
+    cursor: "pointer",
+  }
+
+  const showMessage = (type: "success" | "error", text: string) => {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 5000)
+  }
 
   useEffect(() => {
     // Check admin authentication
@@ -111,11 +165,7 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Error loading dashboard data:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load dashboard data",
-        variant: "destructive",
-      })
+      showMessage("error", "Failed to load dashboard data")
     }
   }
 
@@ -136,27 +186,31 @@ export default function AdminDashboard() {
       })
 
       if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Access code revoked successfully",
-        })
+        showMessage("success", "Access code revoked successfully")
         loadDashboardData()
       } else {
         throw new Error("Failed to revoke access code")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to revoke access code",
-        variant: "destructive",
-      })
+      showMessage("error", "Failed to revoke access code")
     }
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] flex items-center justify-center">
-        <div className="text-red-400 text-lg animate-pulse">Loading admin dashboard...</div>
+      <div style={containerStyle}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            color: "#ef4444",
+            fontSize: "1.125rem",
+          }}
+        >
+          Loading admin dashboard...
+        </div>
       </div>
     )
   }
@@ -166,51 +220,90 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] text-[#e0e0e0] p-8">
-      {/* Grain texture overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div style={containerStyle}>
+      <div style={{ maxWidth: "112rem", margin: "0 auto" }}>
+        {/* Message Display */}
+        {message && (
+          <div
+            style={{
+              position: "fixed",
+              top: "2rem",
+              right: "2rem",
+              padding: "1rem 1.5rem",
+              borderRadius: "0.75rem",
+              background: message.type === "success" ? "rgba(34, 197, 94, 0.9)" : "rgba(239, 68, 68, 0.9)",
+              color: "white",
+              zIndex: 1000,
+              animation: "slideIn 0.3s ease-out",
+            }}
+          >
+            {message.text}
+          </div>
+        )}
 
-      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-12">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-red-600 to-orange-600 rounded-xl flex items-center justify-center mr-4">
-              <Shield className="w-6 h-6 text-white" />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <div
+              style={{
+                width: "3rem",
+                height: "3rem",
+                background: "linear-gradient(135deg, #dc2626, #f97316)",
+                borderRadius: "0.75rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: "1rem",
+              }}
+            >
+              <Shield style={{ width: "1.5rem", height: "1.5rem", color: "white" }} />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-red-400 via-orange-400 to-red-600 bg-clip-text text-transparent">
+              <h1
+                style={{
+                  fontSize: "2.25rem",
+                  fontWeight: "bold",
+                  background: "linear-gradient(135deg, #ef4444, #f97316, #ef4444)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
                 Admin Dashboard
               </h1>
-              <p className="text-[#888] text-lg">Movie Time Administration Panel</p>
+              <p style={{ color: "#888", fontSize: "1.125rem" }}>Movie Time Administration Panel</p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <Button
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button
               onClick={loadDashboardData}
-              variant="outline"
-              className="border-red-500/30 hover:bg-red-600/20 text-red-300"
+              style={{
+                ...buttonStyle,
+                background: "rgba(239, 68, 68, 0.2)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                color: "#ef4444",
+              }}
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw style={{ width: "1rem", height: "1rem" }} />
               Refresh
-            </Button>
-            <Button
+            </button>
+            <button
               onClick={handleLogout}
-              variant="outline"
-              className="border-red-500/30 hover:bg-red-600/20 text-red-300"
+              style={{
+                ...buttonStyle,
+                background: "rgba(239, 68, 68, 0.2)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                color: "#ef4444",
+              }}
             >
-              <LogOut className="w-4 h-4 mr-2" />
+              <LogOut style={{ width: "1rem", height: "1rem" }} />
               Logout
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex space-x-4 mb-8">
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
           {[
             { id: "overview", label: "Overview", icon: BarChart3 },
             { id: "users", label: "Users", icon: Users },
@@ -220,13 +313,14 @@ export default function AdminDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                activeTab === tab.id
-                  ? "bg-red-600/30 border-2 border-red-500/50 text-red-300"
-                  : "bg-black/60 border-2 border-red-500/30 text-[#888] hover:bg-red-600/20 hover:text-red-300"
-              }`}
+              style={{
+                ...tabStyle,
+                background: activeTab === tab.id ? "rgba(239, 68, 68, 0.3)" : "rgba(0, 0, 0, 0.6)",
+                borderColor: activeTab === tab.id ? "rgba(239, 68, 68, 0.5)" : "rgba(239, 68, 68, 0.3)",
+                color: activeTab === tab.id ? "#ef4444" : "#888",
+              }}
             >
-              <tab.icon className="w-5 h-5" />
+              <tab.icon style={{ width: "1.25rem", height: "1.25rem" }} />
               <span>{tab.label}</span>
             </button>
           ))}
@@ -234,256 +328,360 @@ export default function AdminDashboard() {
 
         {/* Overview Tab */}
         {activeTab === "overview" && (
-          <div className="space-y-8">
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
             {/* Stats Grid */}
             {stats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-black/60 border-2 border-red-500/30 backdrop-blur-xl">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+              <div
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem" }}
+              >
+                <div style={cardStyle}>
+                  <div style={contentStyle}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
-                        <p className="text-[#888] text-sm">Total Users</p>
-                        <p className="text-3xl font-bold text-red-300">{stats.totalUsers}</p>
+                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Total Users</p>
+                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#ef4444" }}>{stats.totalUsers}</p>
                       </div>
-                      <Users className="w-8 h-8 text-red-400" />
+                      <Users style={{ width: "2rem", height: "2rem", color: "#ef4444" }} />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                <Card className="bg-black/60 border-2 border-orange-500/30 backdrop-blur-xl">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                <div style={cardStyle}>
+                  <div style={contentStyle}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
-                        <p className="text-[#888] text-sm">Active Codes</p>
-                        <p className="text-3xl font-bold text-orange-300">{stats.activeAccessCodes}</p>
+                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Active Codes</p>
+                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#f97316" }}>
+                          {stats.activeAccessCodes}
+                        </p>
                       </div>
-                      <Key className="w-8 h-8 text-orange-400" />
+                      <Key style={{ width: "2rem", height: "2rem", color: "#f97316" }} />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                <div style={cardStyle}>
+                  <div style={contentStyle}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
-                        <p className="text-[#888] text-sm">Total Watch Time</p>
-                        <p className="text-3xl font-bold text-purple-300">{stats.totalWatchTime}h</p>
+                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Total Watch Time</p>
+                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#a855f7" }}>
+                          {stats.totalWatchTime}h
+                        </p>
                       </div>
-                      <Clock className="w-8 h-8 text-purple-400" />
+                      <Clock style={{ width: "2rem", height: "2rem", color: "#a855f7" }} />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                <Card className="bg-black/60 border-2 border-green-500/30 backdrop-blur-xl">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                <div style={cardStyle}>
+                  <div style={contentStyle}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
-                        <p className="text-[#888] text-sm">Total Favorites</p>
-                        <p className="text-3xl font-bold text-green-300">{stats.totalFavorites}</p>
+                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Total Favorites</p>
+                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#10b981" }}>
+                          {stats.totalFavorites}
+                        </p>
                       </div>
-                      <Heart className="w-8 h-8 text-green-400" />
+                      <Heart style={{ width: "2rem", height: "2rem", color: "#10b981" }} />
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Recent Activity */}
-            <Card className="bg-black/60 border-2 border-red-500/30 backdrop-blur-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center text-white">
-                  <TrendingUp className="w-5 h-5 mr-2 text-red-400" />
+            {/* Platform Statistics */}
+            <div style={cardStyle}>
+              <div style={headerStyle}>
+                <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+                  <TrendingUp
+                    style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }}
+                  />
                   Platform Statistics
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </h3>
+              </div>
+              <div style={contentStyle}>
                 {stats && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 bg-red-600/20 rounded-lg">
-                      <Film className="w-8 h-8 mx-auto mb-2 text-red-400" />
-                      <div className="text-2xl font-bold text-red-300">{stats.totalMoviesWatched}</div>
-                      <div className="text-sm text-[#888]">Movies Watched</div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                      gap: "1.5rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "1rem",
+                        background: "rgba(239, 68, 68, 0.2)",
+                        borderRadius: "0.5rem",
+                      }}
+                    >
+                      <Film style={{ width: "2rem", height: "2rem", margin: "0 auto 0.5rem auto", color: "#ef4444" }} />
+                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#ef4444" }}>
+                        {stats.totalMoviesWatched}
+                      </div>
+                      <div style={{ fontSize: "0.875rem", color: "#888" }}>Movies Watched</div>
                     </div>
-                    <div className="text-center p-4 bg-blue-600/20 rounded-lg">
-                      <Tv className="w-8 h-8 mx-auto mb-2 text-blue-400" />
-                      <div className="text-2xl font-bold text-blue-300">{stats.totalTvWatched}</div>
-                      <div className="text-sm text-[#888]">TV Episodes</div>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "1rem",
+                        background: "rgba(59, 130, 246, 0.2)",
+                        borderRadius: "0.5rem",
+                      }}
+                    >
+                      <Tv style={{ width: "2rem", height: "2rem", margin: "0 auto 0.5rem auto", color: "#3b82f6" }} />
+                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#3b82f6" }}>
+                        {stats.totalTvWatched}
+                      </div>
+                      <div style={{ fontSize: "0.875rem", color: "#888" }}>TV Episodes</div>
                     </div>
-                    <div className="text-center p-4 bg-green-600/20 rounded-lg">
-                      <Users className="w-8 h-8 mx-auto mb-2 text-green-400" />
-                      <div className="text-2xl font-bold text-green-300">{stats.activeUsers}</div>
-                      <div className="text-sm text-[#888]">Active Users</div>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "1rem",
+                        background: "rgba(16, 185, 129, 0.2)",
+                        borderRadius: "0.5rem",
+                      }}
+                    >
+                      <Users
+                        style={{ width: "2rem", height: "2rem", margin: "0 auto 0.5rem auto", color: "#10b981" }}
+                      />
+                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#10b981" }}>
+                        {stats.activeUsers}
+                      </div>
+                      <div style={{ fontSize: "0.875rem", color: "#888" }}>Active Users</div>
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Users Tab */}
         {activeTab === "users" && (
-          <Card className="bg-black/60 border-2 border-red-500/30 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center text-white">
-                <Users className="w-5 h-5 mr-2 text-red-400" />
+          <div style={cardStyle}>
+            <div style={headerStyle}>
+              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+                <Users style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }} />
                 User Management
-              </CardTitle>
-              <CardDescription className="text-[#888]">Manage platform users and their activity</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {users.length > 0 ? (
-                  users.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-red-500/20"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-red-600/30 rounded-full flex items-center justify-center">
-                            <Users className="w-5 h-5 text-red-400" />
-                          </div>
-                          <div>
-                            <div className="font-medium text-white">{user.username || "Anonymous"}</div>
-                            <div className="text-sm text-[#888]">ID: {user.id.slice(0, 8)}...</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-6 text-sm">
-                        <div className="text-center">
-                          <div className="text-white font-medium">{user.totalWatched}</div>
-                          <div className="text-[#888]">Watched</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-white font-medium">{user.totalFavorites}</div>
-                          <div className="text-[#888]">Favorites</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-white font-medium">{new Date(user.lastActive).toLocaleDateString()}</div>
-                          <div className="text-[#888]">Last Active</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-[#888]">No users found</div>
-                )}
+              </h3>
+              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
+                Manage platform users and their activity
+              </p>
+            </div>
+            <div style={contentStyle}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Username
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Join Date
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Last Active
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Watched
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Favorites
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.1)" }}>
+                        <td style={{ padding: "0.75rem", color: "white" }}>{user.username}</td>
+                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
+                          {new Date(user.joinDate).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
+                          {new Date(user.lastActive).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>{user.totalWatched}</td>
+                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
+                          {user.totalFavorites}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* Access Codes Tab */}
         {activeTab === "codes" && (
-          <Card className="bg-black/60 border-2 border-red-500/30 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center text-white">
-                <Key className="w-5 h-5 mr-2 text-red-400" />
+          <div style={cardStyle}>
+            <div style={headerStyle}>
+              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+                <Key style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }} />
                 Access Code Management
-              </CardTitle>
-              <CardDescription className="text-[#888]">Monitor and manage access codes</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {accessCodes.length > 0 ? (
-                  accessCodes.map((code) => (
-                    <div
-                      key={code.id}
-                      className="flex items-center justify-between p-4 bg-black/40 rounded-lg border border-red-500/20"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-orange-600/30 rounded-full flex items-center justify-center">
-                            <Key className="w-5 h-5 text-orange-400" />
-                          </div>
-                          <div>
-                            <div className="font-mono text-white">{code.code}</div>
-                            <div className="text-sm text-[#888]">Created by: {code.createdBy.slice(0, 8)}...</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right text-sm">
-                          <div className="text-white">Expires: {new Date(code.expiresAt).toLocaleDateString()}</div>
-                          <div className="text-[#888]">Created: {new Date(code.createdAt).toLocaleDateString()}</div>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={
-                            code.isUsed
-                              ? "border-gray-500/30 text-gray-400"
-                              : new Date(code.expiresAt) > new Date()
-                                ? "border-green-500/30 text-green-400"
-                                : "border-red-500/30 text-red-400"
-                          }
-                        >
-                          {code.isUsed ? "Used" : new Date(code.expiresAt) > new Date() ? "Active" : "Expired"}
-                        </Badge>
-                        {!code.isUsed && new Date(code.expiresAt) > new Date() && (
-                          <Button
-                            onClick={() => revokeAccessCode(code.id)}
-                            size="sm"
-                            variant="outline"
-                            className="border-red-500/30 hover:bg-red-600/20 text-red-400"
+              </h3>
+              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
+                Monitor and manage user-generated access codes
+              </p>
+            </div>
+            <div style={contentStyle}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Code
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Created By
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Created
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Expires
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Status
+                      </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accessCodes.map((code) => (
+                      <tr key={code.id} style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.1)" }}>
+                        <td style={{ padding: "0.75rem" }}>
+                          <code
+                            style={{
+                              background: "rgba(239, 68, 68, 0.2)",
+                              color: "#ef4444",
+                              padding: "0.25rem 0.5rem",
+                              borderRadius: "0.25rem",
+                              fontSize: "0.875rem",
+                            }}
                           >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-[#888]">No access codes found</div>
-                )}
+                            {code.code}
+                          </code>
+                        </td>
+                        <td style={{ padding: "0.75rem", color: "white" }}>{code.createdBy}</td>
+                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
+                          {new Date(code.createdAt).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
+                          {new Date(code.expiresAt).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: "0.75rem" }}>
+                          <span
+                            style={{
+                              padding: "0.25rem 0.5rem",
+                              borderRadius: "0.25rem",
+                              fontSize: "0.75rem",
+                              fontWeight: "500",
+                              background: code.isUsed
+                                ? "rgba(239, 68, 68, 0.2)"
+                                : new Date(code.expiresAt) < new Date()
+                                  ? "rgba(156, 163, 175, 0.2)"
+                                  : "rgba(34, 197, 94, 0.2)",
+                              color: code.isUsed
+                                ? "#ef4444"
+                                : new Date(code.expiresAt) < new Date()
+                                  ? "#9ca3af"
+                                  : "#22c55e",
+                            }}
+                          >
+                            {code.isUsed ? "Used" : new Date(code.expiresAt) < new Date() ? "Expired" : "Active"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.75rem" }}>
+                          {!code.isUsed && new Date(code.expiresAt) > new Date() && (
+                            <button
+                              onClick={() => revokeAccessCode(code.id)}
+                              style={{
+                                background: "rgba(239, 68, 68, 0.2)",
+                                border: "1px solid rgba(239, 68, 68, 0.3)",
+                                color: "#ef4444",
+                                padding: "0.25rem 0.5rem",
+                                borderRadius: "0.25rem",
+                                fontSize: "0.75rem",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.25rem",
+                              }}
+                            >
+                              <Trash2 style={{ width: "0.75rem", height: "0.75rem" }} />
+                              Revoke
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* Settings Tab */}
         {activeTab === "settings" && (
-          <Card className="bg-black/60 border-2 border-red-500/30 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center text-white">
-                <Settings className="w-5 h-5 mr-2 text-red-400" />
+          <div style={cardStyle}>
+            <div style={headerStyle}>
+              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+                <Settings style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }} />
                 System Settings
-              </CardTitle>
-              <CardDescription className="text-[#888]">Configure platform settings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="p-4 bg-yellow-600/10 border border-yellow-500/30 rounded-lg">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-black text-xs font-bold">!</span>
-                    </div>
-                    <div className="text-sm text-yellow-200">
-                      <p className="font-medium mb-1">Admin Panel Information:</p>
-                      <ul className="space-y-1 text-yellow-300/80">
-                        <li>• Admin session expires after 4 hours of inactivity</li>
-                        <li>• All admin actions are logged for security</li>
-                        <li>• Access codes can be revoked but not modified</li>
-                        <li>• User data is automatically backed up daily</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <Button
-                    onClick={() => (window.location.href = "/")}
-                    variant="outline"
-                    className="border-red-500/30 hover:bg-red-600/20 text-red-300"
-                  >
-                    Back to Movie Time
-                  </Button>
-                </div>
+              </h3>
+              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
+                Configure platform settings and preferences
+              </p>
+            </div>
+            <div style={contentStyle}>
+              <div style={{ textAlign: "center", padding: "3rem 0" }}>
+                <Settings style={{ width: "4rem", height: "4rem", color: "#888", margin: "0 auto 1rem auto" }} />
+                <p style={{ color: "#888", fontSize: "1.125rem" }}>Settings panel coming soon</p>
+                <p style={{ color: "#666", fontSize: "0.875rem" }}>
+                  Advanced configuration options will be available in future updates
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
+
+        {/* Navigation */}
+        <div style={{ marginTop: "3rem", textAlign: "center" }}>
+          <button
+            onClick={() => (window.location.href = "/")}
+            style={{
+              ...buttonStyle,
+              background: "rgba(239, 68, 68, 0.2)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              color: "#ef4444",
+            }}
+          >
+            Back to Movie Time
+          </button>
+        </div>
       </div>
+
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   )
 }
