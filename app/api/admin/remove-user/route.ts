@@ -6,10 +6,10 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export async function POST(request: Request) {
   try {
-    console.log("👤 Remove user request started")
+    console.log("🗑️ Remove user request started")
 
     const { userId } = await request.json()
-    console.log("📝 User ID to remove:", userId)
+    console.log("👤 User ID to remove:", userId)
 
     if (!userId || typeof userId !== "string") {
       console.log("❌ Invalid user ID provided")
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // First, check if the user exists (use select without single() to avoid errors)
+    // First, check if the user exists
     const { data: existingUsers, error: fetchError } = await supabase
       .from("user_profiles")
       .select("id, username")
@@ -47,74 +47,59 @@ export async function POST(request: Request) {
       )
     }
 
-    if (existingUsers.length > 1) {
-      console.log("❌ Multiple users found with same ID")
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Multiple users found with same ID",
-        },
-        { status: 400 },
-      )
-    }
+    const user = existingUsers[0]
+    console.log("📊 Found user to remove:", { id: user.id, username: user.username })
 
-    const existingUser = existingUsers[0]
-    console.log("📊 Found user:", {
-      id: existingUser.id,
-      username: existingUser.username,
-    })
-
-    // Start cascading deletes
-    console.log("🗑️ Starting cascading deletes...")
-
-    // Delete user's favorites
+    // Remove user's favorites first
+    console.log("🗑️ Removing user favorites...")
     const { error: favoritesError } = await supabase.from("favorites").delete().eq("user_id", userId)
 
     if (favoritesError) {
-      console.error("❌ Error deleting user favorites:", favoritesError)
-      // Continue anyway, this is not critical
+      console.error("❌ Error removing favorites:", favoritesError)
+      // Continue anyway, don't fail the whole operation
     } else {
-      console.log("✅ User favorites deleted")
+      console.log("✅ User favorites removed")
     }
 
-    // Delete user's watch history
-    const { error: watchHistoryError } = await supabase.from("watch_history").delete().eq("user_id", userId)
+    // Remove user's watch history
+    console.log("🗑️ Removing user watch history...")
+    const { error: historyError } = await supabase.from("watch_history").delete().eq("user_id", userId)
 
-    if (watchHistoryError) {
-      console.error("❌ Error deleting user watch history:", watchHistoryError)
-      // Continue anyway, this is not critical
+    if (historyError) {
+      console.error("❌ Error removing watch history:", historyError)
+      // Continue anyway, don't fail the whole operation
     } else {
-      console.log("✅ User watch history deleted")
+      console.log("✅ User watch history removed")
     }
 
-    // Deactivate access codes created by this user (don't delete, for audit trail)
-    const { error: accessCodesError } = await supabase
+    // Deactivate access codes created by this user (don't delete them for audit trail)
+    console.log("🔐 Deactivating user's access codes...")
+    const { error: codesError } = await supabase
       .from("access_codes")
       .update({
         is_active: false,
-        is_used: true,
-        used_at: new Date().toISOString(),
-        // Don't set used_by since it expects a UUID and we don't have an admin user ID
+        admin_action: "user_removed",
       })
       .eq("created_by", userId)
 
-    if (accessCodesError) {
-      console.error("❌ Error deactivating user access codes:", accessCodesError)
-      // Continue anyway, this is not critical
+    if (codesError) {
+      console.error("❌ Error deactivating access codes:", codesError)
+      // Continue anyway, don't fail the whole operation
     } else {
-      console.log("✅ User access codes deactivated")
+      console.log("✅ User's access codes deactivated")
     }
 
-    // Finally, delete the user profile
-    const { error: deleteUserError } = await supabase.from("user_profiles").delete().eq("id", userId)
+    // Finally, remove the user profile
+    console.log("🗑️ Removing user profile...")
+    const { error: userError } = await supabase.from("user_profiles").delete().eq("id", userId)
 
-    if (deleteUserError) {
-      console.error("❌ Error deleting user profile:", deleteUserError)
+    if (userError) {
+      console.error("❌ Error removing user profile:", userError)
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to delete user profile",
-          details: deleteUserError.message,
+          error: "Failed to remove user profile",
+          details: userError.message,
         },
         { status: 500 },
       )
@@ -123,7 +108,7 @@ export async function POST(request: Request) {
     console.log("✅ User removed successfully")
     return NextResponse.json({
       success: true,
-      message: `User ${existingUser.username} removed successfully`,
+      message: `User "${user.username}" removed successfully`,
     })
   } catch (error) {
     console.error("💥 Remove user error:", error)
