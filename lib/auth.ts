@@ -25,22 +25,55 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 export async function authenticateUser(username: string, password: string): Promise<AuthResult> {
   try {
+    console.log("Starting authentication for user:", username)
+
+    // Check Supabase connection
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return { success: false, error: "Database connection error" }
+    }
+
     // Get user by username
+    console.log("Querying user_profiles table...")
     const { data: user, error } = await supabase.from("user_profiles").select("*").eq("username", username).single()
 
-    if (error || !user) {
+    if (error) {
+      console.error("Database query error:", error)
+      if (error.code === "PGRST116") {
+        return { success: false, error: "Invalid username or password" }
+      }
+      return { success: false, error: "Database error: " + error.message }
+    }
+
+    if (!user) {
+      console.log("User not found")
       return { success: false, error: "Invalid username or password" }
     }
+
+    console.log("User found, verifying password...")
 
     // Verify password
     const isValidPassword = await verifyPassword(password, user.password_hash)
 
     if (!isValidPassword) {
+      console.log("Password verification failed")
       return { success: false, error: "Invalid username or password" }
     }
 
+    console.log("Password verified, updating last active...")
+
     // Update last active
-    await supabase.from("user_profiles").update({ last_active: new Date().toISOString() }).eq("id", user.id)
+    const { error: updateError } = await supabase
+      .from("user_profiles")
+      .update({ last_active: new Date().toISOString() })
+      .eq("id", user.id)
+
+    if (updateError) {
+      console.warn("Failed to update last_active:", updateError)
+      // Don't fail the login for this
+    }
+
+    console.log("Authentication successful")
 
     return {
       success: true,
@@ -53,13 +86,25 @@ export async function authenticateUser(username: string, password: string): Prom
     }
   } catch (error) {
     console.error("Authentication error:", error)
-    return { success: false, error: "Authentication failed" }
+    return {
+      success: false,
+      error: "Authentication failed: " + (error instanceof Error ? error.message : "Unknown error"),
+    }
   }
 }
 
 export async function createUser(username: string, password: string, accessCode: string): Promise<AuthResult> {
   try {
+    console.log("Starting user creation for:", username)
+
+    // Check Supabase connection
+    if (!supabase) {
+      console.error("Supabase client not initialized")
+      return { success: false, error: "Database connection error" }
+    }
+
     // Verify access code first
+    console.log("Verifying access code...")
     const { data: codeData, error: codeError } = await supabase
       .from("access_codes")
       .select("*")
@@ -67,31 +112,46 @@ export async function createUser(username: string, password: string, accessCode:
       .eq("is_active", true)
       .single()
 
-    if (codeError || !codeData) {
+    if (codeError) {
+      console.error("Access code query error:", codeError)
+      if (codeError.code === "PGRST116") {
+        return { success: false, error: "Invalid or expired access code" }
+      }
+      return { success: false, error: "Database error: " + codeError.message }
+    }
+
+    if (!codeData) {
+      console.log("Access code not found")
       return { success: false, error: "Invalid or expired access code" }
     }
 
     // Check if code has expired
     if (new Date(codeData.expires_at) < new Date()) {
+      console.log("Access code expired")
       return { success: false, error: "Access code has expired" }
     }
 
     // Check if code has already been used
     if (codeData.used_at) {
+      console.log("Access code already used")
       return { success: false, error: "Access code has already been used" }
     }
 
     // Check if username already exists
+    console.log("Checking if username exists...")
     const { data: existingUser } = await supabase.from("user_profiles").select("id").eq("username", username).single()
 
     if (existingUser) {
+      console.log("Username already exists")
       return { success: false, error: "Username already exists" }
     }
 
     // Hash password
+    console.log("Hashing password...")
     const passwordHash = await hashPassword(password)
 
     // Create user
+    console.log("Creating user...")
     const { data: newUser, error: userError } = await supabase
       .from("user_profiles")
       .insert({
@@ -105,11 +165,12 @@ export async function createUser(username: string, password: string, accessCode:
 
     if (userError || !newUser) {
       console.error("User creation error:", userError)
-      return { success: false, error: "Failed to create account" }
+      return { success: false, error: "Failed to create account: " + (userError?.message || "Unknown error") }
     }
 
     // Mark access code as used
-    await supabase
+    console.log("Marking access code as used...")
+    const { error: codeUpdateError } = await supabase
       .from("access_codes")
       .update({
         used_by: newUser.id,
@@ -117,6 +178,13 @@ export async function createUser(username: string, password: string, accessCode:
         is_active: false,
       })
       .eq("id", codeData.id)
+
+    if (codeUpdateError) {
+      console.warn("Failed to update access code:", codeUpdateError)
+      // Don't fail the registration for this
+    }
+
+    console.log("User created successfully")
 
     return {
       success: true,
@@ -129,7 +197,10 @@ export async function createUser(username: string, password: string, accessCode:
     }
   } catch (error) {
     console.error("User creation error:", error)
-    return { success: false, error: "Failed to create account" }
+    return {
+      success: false,
+      error: "Failed to create account: " + (error instanceof Error ? error.message : "Unknown error"),
+    }
   }
 }
 
