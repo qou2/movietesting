@@ -659,7 +659,7 @@ export default function AccountPage() {
                     <div className="text-sm text-yellow-200">
                       <p className="font-medium mb-1">Important:</p>
                       <ul className="space-y-1 text-yellow-300/80">
-                        <li>• This code can only be used once</li>
+                        <li>• This code can only be used once by others</li>
                         <li>• It will expire in 24 hours</li>
                         <li>• Generating a new code will deactivate the current one</li>
                         <li>• Share this code securely with trusted users only</li>
