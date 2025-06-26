@@ -18,6 +18,8 @@ import {
   Tv,
   Heart,
   TrendingUp,
+  UserX,
+  AlertTriangle,
 } from "lucide-react"
 
 interface AdminStats {
@@ -60,6 +62,13 @@ export default function AdminDashboard() {
   const [accessCodes, setAccessCodes] = useState<AccessCodeData[]>([])
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "codes" | "settings">("overview")
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    show: boolean
+    type: "revoke" | "remove"
+    id: string
+    title: string
+    message: string
+  } | null>(null)
 
   // Inline styles
   const containerStyle: React.CSSProperties = {
@@ -112,9 +121,40 @@ export default function AdminDashboard() {
     cursor: "pointer",
   }
 
+  const modalStyle: React.CSSProperties = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0, 0, 0, 0.8)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  }
+
+  const modalContentStyle: React.CSSProperties = {
+    background: "rgba(0, 0, 0, 0.9)",
+    border: "2px solid rgba(239, 68, 68, 0.3)",
+    borderRadius: "1rem",
+    padding: "2rem",
+    maxWidth: "400px",
+    width: "90%",
+    textAlign: "center",
+  }
+
   const showMessage = (type: "success" | "error", text: string) => {
     setMessage({ type, text })
     setTimeout(() => setMessage(null), 5000)
+  }
+
+  const showConfirmDialog = (type: "revoke" | "remove", id: string, title: string, message: string) => {
+    setConfirmDialog({ show: true, type, id, title, message })
+  }
+
+  const hideConfirmDialog = () => {
+    setConfirmDialog(null)
   }
 
   useEffect(() => {
@@ -177,6 +217,7 @@ export default function AdminDashboard() {
 
   const revokeAccessCode = async (codeId: string) => {
     try {
+      console.log("Revoking access code:", codeId)
       const response = await fetch("/api/admin/revoke-access-code", {
         method: "POST",
         headers: {
@@ -185,14 +226,56 @@ export default function AdminDashboard() {
         body: JSON.stringify({ codeId }),
       })
 
-      if (response.ok) {
+      const data = await response.json()
+      console.log("Revoke response:", data)
+
+      if (response.ok && data.success) {
         showMessage("success", "Access code revoked successfully")
         loadDashboardData()
       } else {
-        throw new Error("Failed to revoke access code")
+        throw new Error(data.error || "Failed to revoke access code")
       }
     } catch (error) {
-      showMessage("error", "Failed to revoke access code")
+      console.error("Revoke access code error:", error)
+      showMessage("error", error instanceof Error ? error.message : "Failed to revoke access code")
+    }
+    hideConfirmDialog()
+  }
+
+  const removeUser = async (userId: string) => {
+    try {
+      console.log("Removing user:", userId)
+      const response = await fetch("/api/admin/remove-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      })
+
+      const data = await response.json()
+      console.log("Remove user response:", data)
+
+      if (response.ok && data.success) {
+        showMessage("success", "User removed successfully")
+        loadDashboardData()
+      } else {
+        throw new Error(data.error || "Failed to remove user")
+      }
+    } catch (error) {
+      console.error("Remove user error:", error)
+      showMessage("error", error instanceof Error ? error.message : "Failed to remove user")
+    }
+    hideConfirmDialog()
+  }
+
+  const handleConfirmAction = () => {
+    if (!confirmDialog) return
+
+    if (confirmDialog.type === "revoke") {
+      revokeAccessCode(confirmDialog.id)
+    } else if (confirmDialog.type === "remove") {
+      removeUser(confirmDialog.id)
     }
   }
 
@@ -238,6 +321,47 @@ export default function AdminDashboard() {
             }}
           >
             {message.text}
+          </div>
+        )}
+
+        {/* Confirmation Dialog */}
+        {confirmDialog && (
+          <div style={modalStyle}>
+            <div style={modalContentStyle}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+                <AlertTriangle style={{ width: "2rem", height: "2rem", color: "#f59e0b", marginRight: "0.5rem" }} />
+                <h3 style={{ color: "white", margin: 0 }}>{confirmDialog.title}</h3>
+              </div>
+              <p style={{ color: "#888", marginBottom: "2rem" }}>{confirmDialog.message}</p>
+              <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                <button
+                  onClick={hideConfirmDialog}
+                  style={{
+                    background: "rgba(156, 163, 175, 0.2)",
+                    border: "1px solid rgba(156, 163, 175, 0.3)",
+                    color: "#9ca3af",
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.5rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmAction}
+                  style={{
+                    background: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#ef4444",
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.5rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  {confirmDialog.type === "revoke" ? "Revoke" : "Remove"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -492,6 +616,9 @@ export default function AdminDashboard() {
                       <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
                         Favorites
                       </th>
+                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -507,6 +634,33 @@ export default function AdminDashboard() {
                         <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>{user.totalWatched}</td>
                         <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
                           {user.totalFavorites}
+                        </td>
+                        <td style={{ padding: "0.75rem" }}>
+                          <button
+                            onClick={() =>
+                              showConfirmDialog(
+                                "remove",
+                                user.id,
+                                "Remove User",
+                                `Are you sure you want to remove user "${user.username}"? This will permanently delete their account and all associated data.`,
+                              )
+                            }
+                            style={{
+                              background: "rgba(239, 68, 68, 0.2)",
+                              border: "1px solid rgba(239, 68, 68, 0.3)",
+                              color: "#ef4444",
+                              padding: "0.25rem 0.5rem",
+                              borderRadius: "0.25rem",
+                              fontSize: "0.75rem",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.25rem",
+                            }}
+                          >
+                            <UserX style={{ width: "0.75rem", height: "0.75rem" }} />
+                            Remove
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -602,7 +756,14 @@ export default function AdminDashboard() {
                         <td style={{ padding: "0.75rem" }}>
                           {!code.isUsed && new Date(code.expiresAt) > new Date() && (
                             <button
-                              onClick={() => revokeAccessCode(code.id)}
+                              onClick={() =>
+                                showConfirmDialog(
+                                  "revoke",
+                                  code.id,
+                                  "Revoke Access Code",
+                                  `Are you sure you want to revoke access code "${code.code}"? This action cannot be undone.`,
+                                )
+                              }
                               style={{
                                 background: "rgba(239, 68, 68, 0.2)",
                                 border: "1px solid rgba(239, 68, 68, 0.3)",
