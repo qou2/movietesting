@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Search, Filter, X, Star, Calendar, Clock, Heart, Play, Info, Tv, Film, User, Lock } from "lucide-react"
+import { Search, Filter, X, Star, Calendar, Clock, Heart, Play, Tv, Film, User, Lock } from "lucide-react"
 import { useDatabase } from "@/hooks/useDatabase"
 import SeasonEpisodeSelector from "@/components/season-episode-selector"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -93,6 +93,99 @@ export default function EnhancedMovieApp() {
     { id: 37, name: "Western" },
   ]
 
+  // Inline styles
+  const containerStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+    color: "#e0e0e0",
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+    position: "relative",
+    overflowX: "hidden",
+  }
+
+  const headerStyle: React.CSSProperties = {
+    textAlign: "center",
+    marginBottom: "3rem",
+    animation: "fadeInUp 0.8s ease-out",
+  }
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: "3rem",
+    fontWeight: "bold",
+    background: "linear-gradient(135deg, #a855f7, #ec4899, #a855f7)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    backgroundClip: "text",
+    letterSpacing: "-0.025em",
+    marginBottom: "1rem",
+  }
+
+  const searchContainerStyle: React.CSSProperties = {
+    position: "relative",
+    maxWidth: "32rem",
+    margin: "0 auto 3rem auto",
+    zIndex: 50,
+  }
+
+  const searchInputStyle: React.CSSProperties = {
+    width: "100%",
+    paddingLeft: "3rem",
+    paddingRight: "4rem",
+    paddingTop: "1rem",
+    paddingBottom: "1rem",
+    fontSize: "1.125rem",
+    border: "2px solid rgba(168, 85, 247, 0.3)",
+    borderRadius: "1rem",
+    background: "rgba(0, 0, 0, 0.6)",
+    backdropFilter: "blur(12px)",
+    color: "white",
+    outline: "none",
+    transition: "all 0.3s ease",
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+    color: "white",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "0.75rem",
+    border: "none",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  }
+
+  const cardStyle: React.CSSProperties = {
+    background: "rgba(0, 0, 0, 0.6)",
+    border: "2px solid rgba(168, 85, 247, 0.3)",
+    borderRadius: "1.5rem",
+    padding: "2rem",
+    backdropFilter: "blur(12px)",
+    animation: "fadeInUp 0.8s ease-out 0.4s both",
+  }
+
+  const playerContainerStyle: React.CSSProperties = {
+    position: "relative",
+    width: "100%",
+    paddingBottom: "56.25%",
+    borderRadius: "1rem",
+    overflow: "hidden",
+    background: "linear-gradient(135deg, rgba(139, 69, 193, 0.2), rgba(236, 72, 153, 0.2))",
+    border: "1px solid rgba(168, 85, 247, 0.2)",
+  }
+
+  const iframeStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "1rem",
+  }
+
   // Helper function to safely parse year from date
   const parseYear = (dateString: string | null | undefined): string => {
     if (!dateString) return ""
@@ -122,23 +215,6 @@ export default function EnhancedMovieApp() {
       return ""
     }
   }
-
-  useEffect(() => {
-    // Prevent any stray API calls that might cause errors
-    const originalFetch = window.fetch
-    window.fetch = function (...args) {
-      const url = args[0]
-      if (typeof url === "string" && url.includes("generate-access-code")) {
-        console.warn("Blocked call to non-existent generate-access-code endpoint")
-        return Promise.reject(new Error("Endpoint not available"))
-      }
-      return originalFetch.apply(this, args)
-    }
-
-    return () => {
-      window.fetch = originalFetch
-    }
-  }, [])
 
   // Check for direct media loading from URL params
   useEffect(() => {
@@ -593,80 +669,163 @@ export default function EnhancedMovieApp() {
     media,
     showFavorite = false,
     size = "normal",
-  }: { media: Media; showFavorite?: boolean; size?: "normal" | "large" }) => (
-    <div
-      className={`flex-shrink-0 cursor-pointer group relative ${size === "large" ? "w-64" : "w-48"}`}
-      onClick={() => selectMedia(media)}
-    >
-      <div className="relative overflow-hidden rounded-xl">
-        <img
-          src={media.poster || "/placeholder.svg?height=300&width=200"}
-          alt={media.title}
-          className={`w-full object-cover border border-[#333] group-hover:scale-105 transition-all duration-300 ${size === "large" ? "h-96" : "h-72"}`}
-          onError={(e) => {
-            const target = e.target as HTMLImageElement
-            target.src = "/placeholder.svg?height=300&width=200"
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+  }: { media: Media; showFavorite?: boolean; size?: "normal" | "large" }) => {
+    const cardStyle: React.CSSProperties = {
+      flexShrink: 0,
+      cursor: "pointer",
+      position: "relative",
+      width: size === "large" ? "16rem" : "12rem",
+      transition: "transform 0.3s ease",
+    }
 
-        {/* Media Type Badge */}
-        <div className="absolute top-2 left-2">
-          <div
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              media.mediaType === "tv" ? "bg-blue-600/80 text-blue-100" : "bg-purple-600/80 text-purple-100"
-            }`}
-          >
+    const imageStyle: React.CSSProperties = {
+      width: "100%",
+      height: size === "large" ? "24rem" : "18rem",
+      objectFit: "cover",
+      border: "1px solid #333",
+      borderRadius: "0.75rem",
+      transition: "transform 0.3s ease",
+    }
+
+    const overlayStyle: React.CSSProperties = {
+      position: "absolute",
+      inset: 0,
+      background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent, transparent)",
+      opacity: 0,
+      transition: "opacity 0.3s ease",
+      borderRadius: "0.75rem",
+    }
+
+    const badgeStyle: React.CSSProperties = {
+      position: "absolute",
+      top: "0.5rem",
+      left: "0.5rem",
+      padding: "0.25rem 0.5rem",
+      borderRadius: "9999px",
+      fontSize: "0.75rem",
+      fontWeight: "500",
+      background: media.mediaType === "tv" ? "rgba(59, 130, 246, 0.8)" : "rgba(168, 85, 247, 0.8)",
+      color: media.mediaType === "tv" ? "#dbeafe" : "#e9d5ff",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.25rem",
+    }
+
+    const titleStyle: React.CSSProperties = {
+      fontWeight: "600",
+      color: "white",
+      fontSize: "0.875rem",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+      marginTop: "0.75rem",
+    }
+
+    const metaStyle: React.CSSProperties = {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: "0.25rem",
+    }
+
+    const yearStyle: React.CSSProperties = {
+      color: "#888",
+      fontSize: "0.75rem",
+    }
+
+    const ratingStyle: React.CSSProperties = {
+      display: "flex",
+      alignItems: "center",
+      color: "#eab308",
+      fontSize: "0.75rem",
+    }
+
+    return (
+      <div
+        style={cardStyle}
+        onClick={() => selectMedia(media)}
+        onMouseEnter={(e) => {
+          const img = e.currentTarget.querySelector("img") as HTMLImageElement
+          const overlay = e.currentTarget.querySelector(".overlay") as HTMLDivElement
+          if (img) img.style.transform = "scale(1.05)"
+          if (overlay) overlay.style.opacity = "1"
+        }}
+        onMouseLeave={(e) => {
+          const img = e.currentTarget.querySelector("img") as HTMLImageElement
+          const overlay = e.currentTarget.querySelector(".overlay") as HTMLDivElement
+          if (img) img.style.transform = "scale(1)"
+          if (overlay) overlay.style.opacity = "0"
+        }}
+      >
+        <div style={{ position: "relative", overflow: "hidden", borderRadius: "0.75rem" }}>
+          <img
+            src={media.poster || "/placeholder.svg?height=300&width=200"}
+            alt={media.title}
+            style={imageStyle}
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.src = "/placeholder.svg?height=300&width=200"
+            }}
+          />
+          <div className="overlay" style={overlayStyle} />
+
+          {/* Media Type Badge */}
+          <div style={badgeStyle}>
             {media.mediaType === "tv" ? (
-              <div className="flex items-center">
-                <Tv className="w-3 h-3 mr-1" />
+              <>
+                <Tv style={{ width: "0.75rem", height: "0.75rem" }} />
                 TV
-              </div>
+              </>
             ) : (
-              <div className="flex items-center">
-                <Film className="w-3 h-3 mr-1" />
+              <>
+                <Film style={{ width: "0.75rem", height: "0.75rem" }} />
                 Movie
-              </div>
+              </>
             )}
           </div>
-        </div>
 
-        <div className="absolute bottom-4 left-4 right-4 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Play className="w-8 h-8 text-white bg-purple-600 rounded-full p-2" />
-              <Info className="w-8 h-8 text-white bg-black/50 rounded-full p-2" />
-            </div>
-            {showFavorite && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleToggleFavorite(media)
+          {showFavorite && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleToggleFavorite(media)
+              }}
+              style={{
+                position: "absolute",
+                top: "0.5rem",
+                right: "0.5rem",
+                padding: "0.5rem",
+                background: "rgba(0, 0, 0, 0.7)",
+                borderRadius: "9999px",
+                border: "none",
+                cursor: "pointer",
+                transition: "background 0.3s ease",
+              }}
+            >
+              <Heart
+                style={{
+                  width: "1rem",
+                  height: "1rem",
+                  color: favorites.includes(media.tmdbId) ? "#ef4444" : "white",
+                  fill: favorites.includes(media.tmdbId) ? "#ef4444" : "none",
                 }}
-                className="p-2 bg-black/70 rounded-full hover:bg-black/90 transition-colors"
-              >
-                <Heart
-                  className={`w-4 h-4 ${favorites.includes(media.tmdbId) ? "fill-red-500 text-red-500" : "text-white"}`}
-                />
-              </button>
-            )}
-          </div>
+              />
+            </button>
+          )}
         </div>
-      </div>
-      <div className="mt-3">
-        <h3 className="font-semibold text-white text-sm truncate">{media.title}</h3>
-        <div className="flex items-center justify-between mt-1">
-          <p className="text-[#888] text-xs">{media.year}</p>
+        <div style={titleStyle}>{media.title}</div>
+        <div style={metaStyle}>
+          <p style={yearStyle}>{media.year}</p>
           {media.rating && (
-            <div className="flex items-center">
-              <Star className="w-3 h-3 text-yellow-500 mr-1" />
-              <span className="text-yellow-500 text-xs">{media.rating.toFixed(1)}</span>
+            <div style={ratingStyle}>
+              <Star style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} />
+              <span>{media.rating.toFixed(1)}</span>
             </div>
           )}
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const getPlayerUrl = () => {
     if (!selectedMedia) return ""
@@ -678,32 +837,61 @@ export default function EnhancedMovieApp() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] text-[#e0e0e0] relative overflow-x-hidden">
-      {/* Grain texture overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+  if (isLoading) {
+    return (
+      <div style={containerStyle}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            color: "#a855f7",
+            fontSize: "1.125rem",
+          }}
+        >
+          Loading...
+        </div>
+      </div>
+    )
+  }
 
-      <div className="max-w-7xl mx-auto px-8 py-8 relative">
+  return (
+    <div style={containerStyle}>
+      <div style={{ maxWidth: "112rem", margin: "0 auto", padding: "2rem", position: "relative" }}>
         {/* Header */}
-        <div className="text-center mb-12 animate-fade-in-up">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mr-4">
-              <Play className="w-6 h-6 text-white" />
+        <div style={headerStyle}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+            <div
+              style={{
+                width: "3rem",
+                height: "3rem",
+                background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+                borderRadius: "0.75rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: "1rem",
+              }}
+            >
+              <Play style={{ width: "1.5rem", height: "1.5rem", color: "white" }} />
             </div>
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent tracking-tight">
-              movie time
-            </h1>
+            <h1 style={titleStyle}>movie time</h1>
           </div>
-          <p className="text-[#888] text-lg font-normal mb-2">powered by videasy • unlimited streaming</p>
-          <div className="opacity-60 hover:opacity-100 transition-opacity duration-300">
+          <p style={{ color: "#888", fontSize: "1.125rem", fontWeight: "normal", marginBottom: "0.5rem" }}>
+            powered by videasy • unlimited streaming
+          </p>
+          <div style={{ opacity: 0.6, transition: "opacity 0.3s ease" }}>
             <a
               href="https://qou2.xyz"
-              className="text-[#666] hover:text-purple-400 text-sm transition-colors duration-300"
+              style={{
+                color: "#666",
+                fontSize: "0.875rem",
+                textDecoration: "none",
+                transition: "color 0.3s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#a855f7")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#666")}
             >
               ← back to qou2.xyz
             </a>
@@ -711,73 +899,206 @@ export default function EnhancedMovieApp() {
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-center space-x-4 mb-8 animate-fade-in-up-delay-100">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "1rem",
+            marginBottom: "2rem",
+            animation: "fadeInUp 0.8s ease-out 0.1s both",
+          }}
+        >
           <button
             onClick={() => (window.location.href = "/account")}
-            className="bg-black/60 border-2 border-purple-500/30 text-purple-300 px-6 py-3 rounded-xl font-medium hover:bg-purple-600/20 hover:border-purple-500 transition-all duration-300 backdrop-blur-xl flex items-center space-x-2"
+            style={{
+              ...buttonStyle,
+              background: "rgba(0, 0, 0, 0.6)",
+              border: "2px solid rgba(168, 85, 247, 0.3)",
+              color: "#a855f7",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)"
+              e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.5)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(0, 0, 0, 0.6)"
+              e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.3)"
+            }}
           >
-            <User className="w-5 h-5" />
+            <User style={{ width: "1.25rem", height: "1.25rem" }} />
             <span>My Account</span>
           </button>
           <button
             onClick={() => (window.location.href = "/admin")}
-            className="bg-black/60 border-2 border-red-500/30 text-red-300 px-6 py-3 rounded-xl font-medium hover:bg-red-600/20 hover:border-red-500 transition-all duration-300 backdrop-blur-xl flex items-center space-x-2"
+            style={{
+              ...buttonStyle,
+              background: "rgba(0, 0, 0, 0.6)",
+              border: "2px solid rgba(239, 68, 68, 0.3)",
+              color: "#ef4444",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(239, 68, 68, 0.2)"
+              e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.5)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(0, 0, 0, 0.6)"
+              e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.3)"
+            }}
           >
-            <Lock className="w-5 h-5" />
+            <Lock style={{ width: "1.25rem", height: "1.25rem" }} />
             <span>Admin</span>
           </button>
         </div>
 
         {/* Search Container */}
-        <div ref={searchContainerRef} className="relative max-w-2xl mx-auto mb-12 animate-fade-in-up-delay-200 z-50">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400 w-5 h-5" />
+        <div ref={searchContainerRef} style={searchContainerStyle}>
+          <div style={{ position: "relative" }}>
+            <Search
+              style={{
+                position: "absolute",
+                left: "1rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#a855f7",
+                width: "1.25rem",
+                height: "1.25rem",
+              }}
+            />
             <input
               type="text"
               value={searchQuery}
               onChange={handleSearchChange}
               onFocus={() => searchQuery.length >= 2 && setShowAutocomplete(true)}
-              className="w-full pl-12 pr-16 py-4 text-lg border-2 border-purple-500/30 rounded-2xl bg-black/60 backdrop-blur-xl text-white outline-none transition-all duration-300 focus:border-purple-500 focus:bg-black/80 focus:-translate-y-1 focus:shadow-2xl focus:shadow-purple-500/20 placeholder:text-[#666] relative z-10"
+              style={searchInputStyle}
               placeholder="search for movies and TV shows..."
               autoComplete="off"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.5)"
+                e.currentTarget.style.background = "rgba(0, 0, 0, 0.8)"
+                e.currentTarget.style.transform = "translateY(-2px)"
+                e.currentTarget.style.boxShadow = "0 20px 25px -5px rgba(168, 85, 247, 0.2)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.3)"
+                e.currentTarget.style.background = "rgba(0, 0, 0, 0.6)"
+                e.currentTarget.style.transform = "translateY(0)"
+                e.currentTarget.style.boxShadow = "none"
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = "#a855f7"
+                e.currentTarget.style.background = "rgba(0, 0, 0, 0.8)"
+                e.currentTarget.style.transform = "translateY(-2px)"
+                e.currentTarget.style.boxShadow = "0 20px 25px -5px rgba(168, 85, 247, 0.2)"
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = "rgba(168, 85, 247, 0.3)"
+                e.currentTarget.style.background = "rgba(0, 0, 0, 0.6)"
+                e.currentTarget.style.transform = "translateY(0)"
+                e.currentTarget.style.boxShadow = "none"
+              }}
             />
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`absolute right-4 top-1/2 transform -translate-y-1/2 p-2 rounded-xl transition-all duration-300 z-10 ${showFilters ? "bg-purple-600 text-white" : "text-[#666] hover:text-white hover:bg-purple-600/20"}`}
+              style={{
+                position: "absolute",
+                right: "1rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                padding: "0.5rem",
+                borderRadius: "0.75rem",
+                border: "none",
+                background: showFilters ? "#a855f7" : "transparent",
+                color: showFilters ? "white" : "#666",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!showFilters) {
+                  e.currentTarget.style.color = "white"
+                  e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)"
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!showFilters) {
+                  e.currentTarget.style.color = "#666"
+                  e.currentTarget.style.background = "transparent"
+                }
+              }}
             >
-              <Filter className="w-4 h-4" />
+              <Filter style={{ width: "1rem", height: "1rem" }} />
             </button>
           </div>
 
           {/* Filters */}
           {showFilters && (
-            <div className="mt-4 p-6 bg-black/80 border-2 border-purple-500/30 rounded-2xl backdrop-blur-xl relative z-50">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-white font-semibold">Advanced Filters</h3>
-                <div className="flex items-center space-x-2">
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "1.5rem",
+                background: "rgba(0, 0, 0, 0.8)",
+                border: "2px solid rgba(168, 85, 247, 0.3)",
+                borderRadius: "1rem",
+                backdropFilter: "blur(12px)",
+                position: "relative",
+                zIndex: 50,
+              }}
+            >
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}
+              >
+                <h3 style={{ color: "white", fontWeight: "600" }}>Advanced Filters</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <button
                     onClick={handleBrowseWithFilters}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                    style={{
+                      ...buttonStyle,
+                      fontSize: "0.875rem",
+                      padding: "0.5rem 1rem",
+                    }}
                   >
                     Browse All Results
                   </button>
                   <button
                     onClick={clearFilters}
-                    className="text-[#666] hover:text-white text-sm flex items-center transition-colors"
+                    style={{
+                      color: "#666",
+                      fontSize: "0.875rem",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.25rem",
+                      transition: "color 0.3s ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "white")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "#666")}
                   >
-                    <X className="w-4 h-4 mr-1" />
+                    <X style={{ width: "1rem", height: "1rem" }} />
                     Clear
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}
+              >
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Content Type</label>
+                  <label style={{ display: "block", fontSize: "0.875rem", color: "#888", marginBottom: "0.5rem" }}>
+                    Content Type
+                  </label>
                   <select
                     value={filters.mediaType}
                     onChange={(e) => setFilters({ ...filters, mediaType: e.target.value as "all" | "movie" | "tv" })}
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem",
+                      background: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(168, 85, 247, 0.3)",
+                      borderRadius: "0.75rem",
+                      color: "white",
+                      fontSize: "0.875rem",
+                    }}
                   >
                     <option value="all">Movies & TV Shows</option>
                     <option value="movie">Movies Only</option>
@@ -786,11 +1107,21 @@ export default function EnhancedMovieApp() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Genre</label>
+                  <label style={{ display: "block", fontSize: "0.875rem", color: "#888", marginBottom: "0.5rem" }}>
+                    Genre
+                  </label>
                   <select
                     value={filters.genre}
                     onChange={(e) => setFilters({ ...filters, genre: e.target.value })}
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem",
+                      background: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(168, 85, 247, 0.3)",
+                      borderRadius: "0.75rem",
+                      color: "white",
+                      fontSize: "0.875rem",
+                    }}
                   >
                     <option value="">All Genres</option>
                     {genres.map((genre) => (
@@ -802,11 +1133,21 @@ export default function EnhancedMovieApp() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Min Rating</label>
+                  <label style={{ display: "block", fontSize: "0.875rem", color: "#888", marginBottom: "0.5rem" }}>
+                    Min Rating
+                  </label>
                   <select
                     value={filters.minRating}
                     onChange={(e) => setFilters({ ...filters, minRating: e.target.value })}
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem",
+                      background: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(168, 85, 247, 0.3)",
+                      borderRadius: "0.75rem",
+                      color: "white",
+                      fontSize: "0.875rem",
+                    }}
                   >
                     <option value="">Any Rating</option>
                     <option value="7">7.0+</option>
@@ -816,21 +1157,39 @@ export default function EnhancedMovieApp() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Year Range</label>
-                  <div className="flex space-x-2">
+                  <label style={{ display: "block", fontSize: "0.875rem", color: "#888", marginBottom: "0.5rem" }}>
+                    Year Range
+                  </label>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
                     <input
                       type="number"
                       value={filters.yearFrom}
                       onChange={(e) => setFilters({ ...filters, yearFrom: e.target.value })}
                       placeholder="From"
-                      className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem",
+                        background: "rgba(0, 0, 0, 0.6)",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                        borderRadius: "0.75rem",
+                        color: "white",
+                        fontSize: "0.875rem",
+                      }}
                     />
                     <input
                       type="number"
                       value={filters.yearTo}
                       onChange={(e) => setFilters({ ...filters, yearTo: e.target.value })}
                       placeholder="To"
-                      className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                      style={{
+                        width: "100%",
+                        padding: "0.75rem",
+                        background: "rgba(0, 0, 0, 0.6)",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                        borderRadius: "0.75rem",
+                        color: "white",
+                        fontSize: "0.875rem",
+                      }}
                     />
                   </div>
                 </div>
@@ -840,19 +1199,43 @@ export default function EnhancedMovieApp() {
 
           {/* Autocomplete Dropdown */}
           {showAutocomplete && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 border-2 border-purple-500/30 rounded-2xl backdrop-blur-xl max-h-96 overflow-y-auto z-[100]">
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                marginTop: "0.5rem",
+                background: "rgba(0, 0, 0, 0.95)",
+                border: "2px solid rgba(168, 85, 247, 0.3)",
+                borderRadius: "1rem",
+                backdropFilter: "blur(12px)",
+                maxHeight: "24rem",
+                overflowY: "auto",
+                zIndex: 100,
+              }}
+            >
               {/* Search History */}
               {searchHistory.length > 0 && searchQuery.length === 0 && (
-                <div className="p-4 border-b border-purple-500/20">
-                  <div className="flex items-center mb-3 text-purple-400">
-                    <Clock className="w-4 h-4 mr-2" />
-                    <span className="text-sm">Recent Searches</span>
+                <div style={{ padding: "1rem", borderBottom: "1px solid rgba(168, 85, 247, 0.2)" }}>
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: "0.75rem", color: "#a855f7" }}>
+                    <Clock style={{ width: "1rem", height: "1rem", marginRight: "0.5rem" }} />
+                    <span style={{ fontSize: "0.875rem" }}>Recent Searches</span>
                   </div>
                   {searchHistory.slice(0, 5).map((query, index) => (
                     <div
                       key={index}
                       onClick={() => setSearchQuery(query)}
-                      className="p-2 hover:bg-purple-600/20 rounded-xl cursor-pointer text-[#ccc] text-sm transition-colors"
+                      style={{
+                        padding: "0.5rem",
+                        borderRadius: "0.75rem",
+                        cursor: "pointer",
+                        color: "#ccc",
+                        fontSize: "0.875rem",
+                        transition: "background 0.3s ease",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                     >
                       {query}
                     </div>
@@ -861,52 +1244,109 @@ export default function EnhancedMovieApp() {
               )}
 
               {isSearching ? (
-                <div className="text-center py-6 text-purple-400 animate-pulse">searching...</div>
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "1.5rem",
+                    color: "#a855f7",
+                    animation: "pulse 2s infinite",
+                  }}
+                >
+                  searching...
+                </div>
               ) : searchResults.length > 0 ? (
                 searchResults.map((media) => (
                   <div
                     key={`${media.mediaType}-${media.tmdbId}`}
                     onClick={() => selectMedia(media)}
-                    className="flex items-center p-4 cursor-pointer border-b border-purple-500/20 last:border-b-0 hover:bg-purple-600/20 hover:translate-x-1 transition-all duration-200"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "1rem",
+                      cursor: "pointer",
+                      borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)"
+                      e.currentTarget.style.transform = "translateX(4px)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent"
+                      e.currentTarget.style.transform = "translateX(0)"
+                    }}
                   >
                     <img
                       src={media.poster || "/placeholder.svg?height=75&width=50"}
                       alt={media.title}
-                      className="w-12 h-18 object-cover rounded-lg border border-purple-500/30 mr-4"
+                      style={{
+                        width: "3rem",
+                        height: "4.5rem",
+                        objectFit: "cover",
+                        borderRadius: "0.5rem",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                        marginRight: "1rem",
+                      }}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
                         target.src = "/placeholder.svg?height=75&width=50"
                       }}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-center mb-1">
-                        <div className="font-semibold text-white mr-2">{media.title}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", marginBottom: "0.25rem" }}>
+                        <div style={{ fontWeight: "600", color: "white", marginRight: "0.5rem" }}>{media.title}</div>
                         <div
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            media.mediaType === "tv"
-                              ? "bg-blue-600/80 text-blue-100"
-                              : "bg-purple-600/80 text-purple-100"
-                          }`}
+                          style={{
+                            padding: "0.25rem 0.5rem",
+                            borderRadius: "9999px",
+                            fontSize: "0.75rem",
+                            fontWeight: "500",
+                            background:
+                              media.mediaType === "tv" ? "rgba(59, 130, 246, 0.8)" : "rgba(168, 85, 247, 0.8)",
+                            color: media.mediaType === "tv" ? "#dbeafe" : "#e9d5ff",
+                          }}
                         >
                           {media.mediaType === "tv" ? "TV" : "Movie"}
                         </div>
                       </div>
-                      <div className="text-[#888] text-sm flex items-center">
-                        <Calendar className="w-3 h-3 mr-1" />
+                      <div style={{ color: "#888", fontSize: "0.875rem", display: "flex", alignItems: "center" }}>
+                        <Calendar style={{ width: "0.75rem", height: "0.75rem", marginRight: "0.25rem" }} />
                         {media.year}
                         {media.rating && (
                           <>
-                            <Star className="w-3 h-3 ml-3 mr-1 text-yellow-500" />
-                            <span className="text-yellow-500">{media.rating.toFixed(1)}</span>
+                            <Star
+                              style={{
+                                width: "0.75rem",
+                                height: "0.75rem",
+                                marginLeft: "0.75rem",
+                                marginRight: "0.25rem",
+                                color: "#eab308",
+                              }}
+                            />
+                            <span style={{ color: "#eab308" }}>{media.rating.toFixed(1)}</span>
                           </>
                         )}
                       </div>
-                      {media.overview && <div className="text-[#666] text-xs mt-1 line-clamp-2">{media.overview}</div>}
+                      {media.overview && (
+                        <div
+                          style={{
+                            color: "#666",
+                            fontSize: "0.75rem",
+                            marginTop: "0.25rem",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {media.overview}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
               ) : searchQuery.length >= 2 ? (
-                <div className="text-center py-6 text-[#888]">no content found</div>
+                <div style={{ textAlign: "center", padding: "1.5rem", color: "#888" }}>no content found</div>
               ) : null}
             </div>
           )}
@@ -914,12 +1354,20 @@ export default function EnhancedMovieApp() {
 
         {/* Trending Content */}
         {!selectedMedia && trendingMedia.length > 0 && (
-          <div className="mb-12 relative z-10">
-            <div className="flex items-center mb-8">
-              <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full mr-4"></div>
-              <h2 className="text-3xl font-bold text-white">Trending This Week</h2>
+          <div style={{ marginBottom: "3rem", position: "relative", zIndex: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "2rem" }}>
+              <div
+                style={{
+                  width: "0.25rem",
+                  height: "2rem",
+                  background: "linear-gradient(to bottom, #a855f7, #ec4899)",
+                  borderRadius: "9999px",
+                  marginRight: "1rem",
+                }}
+              />
+              <h2 style={{ fontSize: "1.875rem", fontWeight: "bold", color: "white" }}>Trending This Week</h2>
             </div>
-            <div className="flex space-x-6 overflow-x-auto pb-4">
+            <div style={{ display: "flex", gap: "1.5rem", overflowX: "auto", paddingBottom: "1rem" }}>
               {trendingMedia.map((media) => (
                 <MediaCard key={`${media.mediaType}-${media.tmdbId}`} media={media} showFavorite size="large" />
               ))}
@@ -929,14 +1377,14 @@ export default function EnhancedMovieApp() {
 
         {/* Recommended Content */}
         {!selectedMedia && recommendedMedia.length > 0 && (
-          <div className="mb-12 relative z-10">
-            <div className="flex items-center mb-8">
-              <Heart className="w-6 h-6 mr-3 text-pink-500" />
-              <h2 className="text-2xl font-bold text-white">
+          <div style={{ marginBottom: "3rem", position: "relative", zIndex: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "2rem" }}>
+              <Heart style={{ width: "1.5rem", height: "1.5rem", marginRight: "0.75rem", color: "#ec4899" }} />
+              <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "white" }}>
                 {watchHistory.length > 0 ? "Recommended for You" : "Popular Content"}
               </h2>
             </div>
-            <div className="flex space-x-4 overflow-x-auto pb-4">
+            <div style={{ display: "flex", gap: "1rem", overflowX: "auto", paddingBottom: "1rem" }}>
               {recommendedMedia.map((media) => (
                 <MediaCard key={`${media.mediaType}-${media.tmdbId}`} media={media} showFavorite />
               ))}
@@ -946,12 +1394,12 @@ export default function EnhancedMovieApp() {
 
         {/* Continue Watching */}
         {!selectedMedia && watchHistory.length > 0 && (
-          <div className="mb-12 relative z-10">
-            <div className="flex items-center mb-8">
-              <Clock className="w-6 h-6 mr-3 text-blue-400" />
-              <h2 className="text-2xl font-bold text-white">Continue Watching</h2>
+          <div style={{ marginBottom: "3rem", position: "relative", zIndex: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "2rem" }}>
+              <Clock style={{ width: "1.5rem", height: "1.5rem", marginRight: "0.75rem", color: "#3b82f6" }} />
+              <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "white" }}>Continue Watching</h2>
             </div>
-            <div className="flex space-x-4 overflow-x-auto pb-4">
+            <div style={{ display: "flex", gap: "1rem", overflowX: "auto", paddingBottom: "1rem" }}>
               {watchHistory.slice(0, 6).map((media, index) => (
                 <MediaCard key={`${media.mediaType}-${media.tmdbId}-${index}`} media={media} showFavorite />
               ))}
@@ -960,87 +1408,145 @@ export default function EnhancedMovieApp() {
         )}
 
         {/* Player Container */}
-        <div className="bg-black/60 border-2 border-purple-500/30 rounded-3xl p-8 backdrop-blur-xl animate-fade-in-up-delay-400 relative z-10">
+        <div style={cardStyle}>
           {selectedMedia ? (
             <>
-              <div className="flex justify-between items-start mb-8">
-                <div className="flex-1">
-                  <div className="flex items-center mb-3">
-                    <h2 className="text-4xl font-bold text-white mr-4">{selectedMedia.title}</h2>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "2rem",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: "0.75rem" }}>
+                    <h2 style={{ fontSize: "2.25rem", fontWeight: "bold", color: "white", marginRight: "1rem" }}>
+                      {selectedMedia.title}
+                    </h2>
                     <div
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        selectedMedia.mediaType === "tv"
-                          ? "bg-blue-600/80 text-blue-100"
-                          : "bg-purple-600/80 text-purple-100"
-                      }`}
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        borderRadius: "9999px",
+                        fontSize: "0.875rem",
+                        fontWeight: "500",
+                        background:
+                          selectedMedia.mediaType === "tv" ? "rgba(59, 130, 246, 0.8)" : "rgba(168, 85, 247, 0.8)",
+                        color: selectedMedia.mediaType === "tv" ? "#dbeafe" : "#e9d5ff",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                      }}
                     >
                       {selectedMedia.mediaType === "tv" ? (
-                        <div className="flex items-center">
-                          <Tv className="w-4 h-4 mr-1" />
+                        <>
+                          <Tv style={{ width: "1rem", height: "1rem" }} />
                           TV Show
-                        </div>
+                        </>
                       ) : (
-                        <div className="flex items-center">
-                          <Film className="w-4 h-4 mr-1" />
+                        <>
+                          <Film style={{ width: "1rem", height: "1rem" }} />
                           Movie
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>
 
                   {/* Episode info for TV shows */}
                   {selectedMedia.mediaType === "tv" && selectedEpisodeData && (
-                    <div className="mb-4">
-                      <h3 className="text-xl font-semibold text-purple-300 mb-1">
+                    <div style={{ marginBottom: "1rem" }}>
+                      <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#a855f7", marginBottom: "0.25rem" }}>
                         Season {selectedSeason}, Episode {selectedEpisode}
                       </h3>
-                      <h4 className="text-lg text-white">{selectedEpisodeData.name}</h4>
+                      <h4 style={{ fontSize: "1.125rem", color: "white" }}>{selectedEpisodeData.name}</h4>
                     </div>
                   )}
 
-                  <div className="flex items-center text-[#888] text-sm space-x-6 mb-4">
-                    <span className="px-3 py-1 bg-purple-600/20 rounded-full text-purple-400 text-xs font-medium">
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      color: "#888",
+                      fontSize: "0.875rem",
+                      gap: "1.5rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <span
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        background: "rgba(168, 85, 247, 0.2)",
+                        borderRadius: "9999px",
+                        color: "#a855f7",
+                        fontSize: "0.75rem",
+                        fontWeight: "500",
+                      }}
+                    >
                       NOW PLAYING
                     </span>
                     {selectedMedia.year && (
-                      <span className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <Calendar style={{ width: "1rem", height: "1rem", marginRight: "0.25rem" }} />
                         {selectedMedia.year}
                       </span>
                     )}
                     {selectedMedia.rating && (
-                      <span className="flex items-center text-yellow-500">
-                        <Star className="w-4 h-4 mr-1" />
+                      <span style={{ display: "flex", alignItems: "center", color: "#eab308" }}>
+                        <Star style={{ width: "1rem", height: "1rem", marginRight: "0.25rem" }} />
                         {selectedMedia.rating.toFixed(1)}
                       </span>
                     )}
                     {selectedMedia.runtime && (
-                      <span className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <Clock style={{ width: "1rem", height: "1rem", marginRight: "0.25rem" }} />
                         {selectedMedia.runtime}min
                       </span>
                     )}
                   </div>
-                  {selectedMedia.genre && <div className="text-purple-300 text-sm mb-3">{selectedMedia.genre}</div>}
+                  {selectedMedia.genre && (
+                    <div style={{ color: "#a855f7", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
+                      {selectedMedia.genre}
+                    </div>
+                  )}
                   {(selectedEpisodeData?.overview || selectedMedia.overview) && (
-                    <p className="text-[#ccc] text-sm leading-relaxed max-w-3xl">
+                    <p style={{ color: "#ccc", fontSize: "0.875rem", lineHeight: "1.6", maxWidth: "48rem" }}>
                       {selectedEpisodeData?.overview || selectedMedia.overview}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={() => handleToggleFavorite(selectedMedia)}
-                  className="p-4 bg-black/70 rounded-2xl hover:bg-black/90 transition-all duration-300 hover:scale-105"
+                  style={{
+                    padding: "1rem",
+                    background: "rgba(0, 0, 0, 0.7)",
+                    borderRadius: "1rem",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(0, 0, 0, 0.9)"
+                    e.currentTarget.style.transform = "scale(1.05)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)"
+                    e.currentTarget.style.transform = "scale(1)"
+                  }}
                 >
                   <Heart
-                    className={`w-6 h-6 ${favorites.includes(selectedMedia.tmdbId) ? "fill-red-500 text-red-500" : "text-white"}`}
+                    style={{
+                      width: "1.5rem",
+                      height: "1.5rem",
+                      color: favorites.includes(selectedMedia.tmdbId) ? "#ef4444" : "white",
+                      fill: favorites.includes(selectedMedia.tmdbId) ? "#ef4444" : "none",
+                    }}
                   />
                 </button>
               </div>
 
               {/* Season/Episode Selector for TV Shows */}
               {selectedMedia.mediaType === "tv" && selectedMedia.totalSeasons && (
-                <div className="mb-8">
+                <div style={{ marginBottom: "2rem" }}>
                   <SeasonEpisodeSelector
                     tmdbId={selectedMedia.tmdbId}
                     totalSeasons={selectedMedia.totalSeasons}
@@ -1051,30 +1557,54 @@ export default function EnhancedMovieApp() {
                 </div>
               )}
 
-              <div className="relative w-full pb-[56.25%] rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20">
+              <div style={playerContainerStyle}>
                 <iframe
                   src={getPlayerUrl()}
-                  className="absolute inset-0 w-full h-full border-0 rounded-2xl"
+                  style={iframeStyle}
                   allowFullScreen
                   allow="encrypted-media"
                   title={selectedMedia.mediaType === "tv" ? "TV Show Player" : "Movie Player"}
                 />
               </div>
-              <div className="mt-6 text-center">
-                <p className="text-[#666] text-xs">
-                  Powered by <span className="text-purple-400 font-medium">Videasy</span> • High-quality streaming with
-                  no ads
+              <div style={{ marginTop: "1.5rem", textAlign: "center" }}>
+                <p style={{ color: "#666", fontSize: "0.75rem" }}>
+                  Powered by <span style={{ color: "#a855f7", fontWeight: "500" }}>Videasy</span> • High-quality
+                  streaming with no ads
                 </p>
               </div>
             </>
           ) : (
-            <div className="relative w-full pb-[56.25%] rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/20 to-pink-900/20 border border-purple-500/20 flex items-center justify-center">
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mb-6">
-                  <Play className="w-10 h-10 text-white" />
+            <div style={playerContainerStyle}>
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <div
+                  style={{
+                    width: "5rem",
+                    height: "5rem",
+                    background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+                    borderRadius: "1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  <Play style={{ width: "2.5rem", height: "2.5rem", color: "white" }} />
                 </div>
-                <div className="text-white text-xl font-semibold mb-2">Ready to Watch?</div>
-                <div className="text-[#888] text-lg">Search and select movies or TV shows to start streaming</div>
+                <div style={{ color: "white", fontSize: "1.25rem", fontWeight: "600", marginBottom: "0.5rem" }}>
+                  Ready to Watch?
+                </div>
+                <div style={{ color: "#888", fontSize: "1.125rem" }}>
+                  Search and select movies or TV shows to start streaming
+                </div>
               </div>
             </div>
           )}
@@ -1082,7 +1612,7 @@ export default function EnhancedMovieApp() {
       </div>
 
       <style jsx>{`
-        @keyframes fade-in-up {
+        @keyframes fadeInUp {
           from {
             opacity: 0;
             transform: translateY(20px);
@@ -1093,36 +1623,9 @@ export default function EnhancedMovieApp() {
           }
         }
 
-        .animate-fade-in-up {
-          animation: fade-in-up 0.8s ease-out;
-        }
-
-        .animate-fade-in-up-delay-100 {
-          animation: fade-in-up 0.8s ease-out 0.1s both;
-        }
-
-        .animate-fade-in-up-delay-200 {
-          animation: fade-in-up 0.8s ease-out 0.2s both;
-        }
-
-        .animate-fade-in-up-delay-400 {
-          animation: fade-in-up 0.8s ease-out 0.4s both;
-        }
-
-        .animate-pulse {
-          animation: pulse 2s infinite;
-        }
-
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
-        }
-
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
         }
 
         /* Custom scrollbar */
