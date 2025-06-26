@@ -1,11 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect, createContext, useContext } from "react"
 import type { User } from "@/lib/auth"
 import AuthPage from "./auth-page"
-
 
 interface AuthContextType {
   user: User | null
@@ -30,12 +28,30 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch("/api/auth/me")
-      const data = await response.json()
+      console.log("Checking authentication...")
+      const response = await fetch("/api/auth/me", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
 
-      if (data.success && data.user) {
-        setUser(data.user)
+      console.log("Auth response status:", response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Auth response:", data)
+
+        if (data.success && data.user) {
+          setUser(data.user)
+          console.log("User authenticated:", data.user.username)
+        } else {
+          setUser(null)
+          console.log("User not authenticated")
+        }
       } else {
+        console.log("Not authenticated (expected for first visit)")
         setUser(null)
       }
     } catch (error) {
@@ -48,14 +64,22 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" })
+      console.log("Logging out...")
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      })
       setUser(null)
+      console.log("Logged out successfully")
     } catch (error) {
       console.error("Logout failed:", error)
+      setUser(null)
     }
   }
 
   const refreshUser = async () => {
+    console.log("Refreshing user...")
+    setIsLoading(true)
     await checkAuth()
   }
 
@@ -63,17 +87,37 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     checkAuth()
   }, [])
 
+  const loadingStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+  }
+
+  const loadingTextStyle: React.CSSProperties = {
+    color: "#a855f7",
+    fontSize: "1.125rem",
+    animation: "pulse 2s infinite",
+  }
+
+  // Show loading spinner
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] flex items-center justify-center">
-        <div className="text-purple-400 text-lg animate-pulse">Loading...</div>
+      <div style={loadingStyle}>
+        <div style={loadingTextStyle}>Loading...</div>
       </div>
     )
   }
 
+  // Show login page if not authenticated
   if (!user) {
+    console.log("Showing auth page")
     return <AuthPage onAuthSuccess={refreshUser} />
   }
 
+  // Show main app if authenticated
+  console.log("Showing main app for user:", user.username)
   return <AuthContext.Provider value={{ user, isLoading, logout, refreshUser }}>{children}</AuthContext.Provider>
 }
