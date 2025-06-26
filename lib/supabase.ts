@@ -15,19 +15,22 @@ export type Database = {
       user_profiles: {
         Row: {
           id: string
-          username: string | null
+          username: string
+          password_hash: string
           created_at: string
           last_active: string
         }
         Insert: {
           id?: string
-          username?: string | null
+          username: string
+          password_hash: string
           created_at?: string
           last_active?: string
         }
         Update: {
           id?: string
-          username?: string | null
+          username?: string
+          password_hash?: string
           created_at?: string
           last_active?: string
         }
