@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,6 +21,7 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
+  // Login
   const [loginData, setLoginData] = useState({
     username: "",
     password: "",
@@ -102,7 +102,15 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] text-[#e0e0e0] flex items-center justify-center p-8">
+    <div
+      className="min-h-screen text-white flex items-center justify-center p-8"
+      style={{
+        background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+        color: "#e0e0e0",
+        minHeight: "100vh",
+        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+      }}
+    >
       {/* Grain texture overlay */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]"
@@ -115,45 +123,71 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl flex items-center justify-center mr-4">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center mr-4"
+              style={{
+                background: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
+              }}
+            >
               <Play className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
+            <h1
+              className="text-4xl font-bold"
+              style={{
+                background: "linear-gradient(135deg, #a855f7 0%, #f472b6 50%, #9333ea 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
               movie time
             </h1>
           </div>
-          <p className="text-[#888] text-lg">Sign in to access unlimited streaming</p>
+          <p style={{ color: "#888", fontSize: "1.125rem" }}>Sign in to access unlimited streaming</p>
         </div>
 
-        <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl">
+        <Card
+          className="border-2 backdrop-blur-xl"
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            borderColor: "rgba(147, 51, 234, 0.3)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
           <CardHeader className="text-center">
-            <CardTitle className="text-white">Welcome</CardTitle>
-            <CardDescription className="text-[#888]">Sign in to your account or create a new one</CardDescription>
+            <CardTitle style={{ color: "white" }}>Welcome</CardTitle>
+            <CardDescription style={{ color: "#888" }}>Sign in to your account or create a new one</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-black/40">
-                <TabsTrigger value="login" className="data-[state=active]:bg-purple-600">
+              <TabsList className="grid w-full grid-cols-2" style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}>
+                <TabsTrigger value="login" className="data-[state=active]:bg-purple-600" style={{ color: "white" }}>
                   <User className="w-4 h-4 mr-2" />
                   Sign In
                 </TabsTrigger>
-                <TabsTrigger value="register" className="data-[state=active]:bg-purple-600">
+                <TabsTrigger value="register" className="data-[state=active]:bg-purple-600" style={{ color: "white" }}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   Sign Up
                 </TabsTrigger>
               </TabsList>
 
               {error && (
-                <Alert className="mt-4 border-red-500/30 bg-red-500/10">
+                <Alert
+                  className="mt-4"
+                  style={{
+                    borderColor: "rgba(239, 68, 68, 0.3)",
+                    backgroundColor: "rgba(239, 68, 68, 0.1)",
+                  }}
+                >
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-red-400">{error}</AlertDescription>
+                  <AlertDescription style={{ color: "#f87171" }}>{error}</AlertDescription>
                 </Alert>
               )}
 
               <TabsContent value="login" className="space-y-4 mt-6">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-username" className="text-white">
+                    <Label htmlFor="login-username" style={{ color: "white" }}>
                       Username
                     </Label>
                     <Input
@@ -161,14 +195,18 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
                       type="text"
                       value={loginData.username}
                       onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                      className="bg-black/60 border-purple-500/30 text-white"
                       placeholder="Enter your username"
                       required
                       disabled={isLoading}
+                      style={{
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                        borderColor: "rgba(147, 51, 234, 0.3)",
+                        color: "white",
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password" className="text-white">
+                    <Label htmlFor="login-password" style={{ color: "white" }}>
                       Password
                     </Label>
                     <div className="relative">
@@ -177,15 +215,29 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
                         type={showPassword ? "text" : "password"}
                         value={loginData.password}
                         onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                        className="bg-black/60 border-purple-500/30 text-white pr-10"
                         placeholder="Enter your password"
                         required
                         disabled={isLoading}
+                        style={{
+                          backgroundColor: "rgba(0, 0, 0, 0.6)",
+                          borderColor: "rgba(147, 51, 234, 0.3)",
+                          color: "white",
+                          paddingRight: "2.5rem",
+                        }}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                        style={{
+                          position: "absolute",
+                          right: "0.75rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: "#888",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -193,8 +245,17 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="w-full"
                     disabled={isLoading}
+                    style={{
+                      background: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
+                      color: "white",
+                      border: "none",
+                      padding: "0.5rem 1rem",
+                      borderRadius: "0.375rem",
+                      cursor: isLoading ? "not-allowed" : "pointer",
+                      opacity: isLoading ? 0.7 : 1,
+                    }}
                   >
                     {isLoading ? "Signing in..." : "Sign In"}
                   </Button>
@@ -204,7 +265,7 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
               <TabsContent value="register" className="space-y-4 mt-6">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-username" className="text-white">
+                    <Label htmlFor="register-username" style={{ color: "white" }}>
                       Username
                     </Label>
                     <Input
@@ -212,15 +273,19 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
                       type="text"
                       value={registerData.username}
                       onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                      className="bg-black/60 border-purple-500/30 text-white"
                       placeholder="Choose a username (min 3 characters)"
                       required
                       disabled={isLoading}
                       minLength={3}
+                      style={{
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                        borderColor: "rgba(147, 51, 234, 0.3)",
+                        color: "white",
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-password" className="text-white">
+                    <Label htmlFor="register-password" style={{ color: "white" }}>
                       Password
                     </Label>
                     <div className="relative">
@@ -229,23 +294,37 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
                         type={showPassword ? "text" : "password"}
                         value={registerData.password}
                         onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                        className="bg-black/60 border-purple-500/30 text-white pr-10"
                         placeholder="Create a password (min 6 characters)"
                         required
                         disabled={isLoading}
                         minLength={6}
+                        style={{
+                          backgroundColor: "rgba(0, 0, 0, 0.6)",
+                          borderColor: "rgba(147, 51, 234, 0.3)",
+                          color: "white",
+                          paddingRight: "2.5rem",
+                        }}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                        style={{
+                          position: "absolute",
+                          right: "0.75rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: "#888",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-confirm-password" className="text-white">
+                    <Label htmlFor="register-confirm-password" style={{ color: "white" }}>
                       Confirm Password
                     </Label>
                     <div className="relative">
@@ -254,22 +333,36 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
                         type={showConfirmPassword ? "text" : "password"}
                         value={registerData.confirmPassword}
                         onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                        className="bg-black/60 border-purple-500/30 text-white pr-10"
                         placeholder="Confirm your password"
                         required
                         disabled={isLoading}
+                        style={{
+                          backgroundColor: "rgba(0, 0, 0, 0.6)",
+                          borderColor: "rgba(147, 51, 234, 0.3)",
+                          color: "white",
+                          paddingRight: "2.5rem",
+                        }}
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                        style={{
+                          position: "absolute",
+                          right: "0.75rem",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          color: "#888",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
                       >
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-access-code" className="text-white">
+                    <Label htmlFor="register-access-code" style={{ color: "white" }}>
                       Access Code
                     </Label>
                     <Input
@@ -277,17 +370,33 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
                       type="text"
                       value={registerData.accessCode}
                       onChange={(e) => setRegisterData({ ...registerData, accessCode: e.target.value.toUpperCase() })}
-                      className="bg-black/60 border-purple-500/30 text-white font-mono"
                       placeholder="Enter your access code"
                       required
                       disabled={isLoading}
+                      style={{
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                        borderColor: "rgba(147, 51, 234, 0.3)",
+                        color: "white",
+                        fontFamily: "monospace",
+                      }}
                     />
-                    <p className="text-xs text-[#666]">You need a valid access code to create an account</p>
+                    <p style={{ fontSize: "0.75rem", color: "#666" }}>
+                      You need a valid access code to create an account
+                    </p>
                   </div>
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="w-full"
                     disabled={isLoading}
+                    style={{
+                      background: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
+                      color: "white",
+                      border: "none",
+                      padding: "0.5rem 1rem",
+                      borderRadius: "0.375rem",
+                      cursor: isLoading ? "not-allowed" : "pointer",
+                      opacity: isLoading ? 0.7 : 1,
+                    }}
                   >
                     {isLoading ? "Creating account..." : "Create Account"}
                   </Button>
@@ -298,7 +407,7 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         </Card>
 
         <div className="mt-8 text-center">
-          <p className="text-[#666] text-sm">Need an access code? Contact an administrator</p>
+          <p style={{ color: "#666", fontSize: "0.875rem" }}>Need an access code? Contact an administrator</p>
         </div>
       </div>
     </div>
