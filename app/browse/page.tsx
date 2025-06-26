@@ -402,61 +402,189 @@ function BrowseContent() {
 
   const MediaCard = ({ media }: { media: Media }) => (
     <div
-      className="group cursor-pointer"
+      style={{
+        cursor: "pointer",
+        transition: "all 0.3s ease",
+      }}
       onClick={() => router.push(`/?watch=${media.tmdbId}&type=${media.mediaType}`)}
+      onMouseEnter={(e) => {
+        const target = e.currentTarget as HTMLElement
+        target.style.transform = "translateY(-4px)"
+      }}
+      onMouseLeave={(e) => {
+        const target = e.currentTarget as HTMLElement
+        target.style.transform = "translateY(0)"
+      }}
     >
-      <div className="relative overflow-hidden rounded-xl bg-black/20 border border-purple-500/20 hover:border-purple-500/50 transition-all duration-300">
-        <div className="aspect-[2/3] relative">
+      <div
+        style={{
+          position: "relative",
+          overflow: "hidden",
+          borderRadius: "12px",
+          backgroundColor: "rgba(0, 0, 0, 0.2)",
+          border: "1px solid rgba(147, 51, 234, 0.2)",
+          transition: "all 0.3s ease",
+        }}
+        onMouseEnter={(e) => {
+          const target = e.currentTarget as HTMLElement
+          target.style.borderColor = "rgba(147, 51, 234, 0.5)"
+        }}
+        onMouseLeave={(e) => {
+          const target = e.currentTarget as HTMLElement
+          target.style.borderColor = "rgba(147, 51, 234, 0.2)"
+        }}
+      >
+        <div style={{ aspectRatio: "2/3", position: "relative" }}>
           <img
             src={media.poster || "/placeholder.svg?height=450&width=300"}
             alt={media.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transition: "transform 0.3s ease",
+            }}
             onError={(e) => {
               const target = e.target as HTMLImageElement
               target.src = "/placeholder.svg?height=450&width=300"
             }}
+            onMouseEnter={(e) => {
+              const target = e.target as HTMLImageElement
+              target.style.transform = "scale(1.05)"
+            }}
+            onMouseLeave={(e) => {
+              const target = e.target as HTMLImageElement
+              target.style.transform = "scale(1)"
+            }}
           />
 
           {/* Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <div
+            style={{
+              position: "absolute",
+              inset: "0",
+              background: "linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent, transparent)",
+              opacity: "0",
+              transition: "opacity 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              const target = e.currentTarget as HTMLElement
+              target.style.opacity = "1"
+            }}
+            onMouseLeave={(e) => {
+              const target = e.currentTarget as HTMLElement
+              target.style.opacity = "0"
+            }}
+          />
 
           {/* Media Type Badge */}
-          <div className="absolute top-2 left-2">
+          <div style={{ position: "absolute", top: "8px", left: "8px" }}>
             <div
-              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                media.mediaType === "tv" ? "bg-blue-600/80 text-blue-100" : "bg-purple-600/80 text-purple-100"
-              }`}
+              style={{
+                padding: "4px 8px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                fontWeight: "500",
+                backgroundColor: media.mediaType === "tv" ? "rgba(37, 99, 235, 0.8)" : "rgba(147, 51, 234, 0.8)",
+                color: media.mediaType === "tv" ? "#dbeafe" : "#e9d5ff",
+                display: "flex",
+                alignItems: "center",
+              }}
             >
               {media.mediaType === "tv" ? (
-                <div className="flex items-center">
-                  <Tv className="w-3 h-3 mr-1" />
+                <>
+                  <Tv style={{ width: "12px", height: "12px", marginRight: "4px" }} />
                   TV
-                </div>
+                </>
               ) : (
-                <div className="flex items-center">
-                  <Film className="w-3 h-3 mr-1" />
+                <>
+                  <Film style={{ width: "12px", height: "12px", marginRight: "4px" }} />
                   Movie
-                </div>
+                </>
               )}
             </div>
           </div>
 
           {/* Actions */}
-          <div className="absolute bottom-4 left-4 right-4 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Play className="w-8 h-8 text-white bg-purple-600 rounded-full p-2" />
-                <Info className="w-8 h-8 text-white bg-black/50 rounded-full p-2" />
+          <div
+            style={{
+              position: "absolute",
+              bottom: "16px",
+              left: "16px",
+              right: "16px",
+              transform: "translateY(16px)",
+              transition: "all 0.3s ease",
+              opacity: "0",
+            }}
+            onMouseEnter={(e) => {
+              const target = e.currentTarget as HTMLElement
+              target.style.transform = "translateY(0)"
+              target.style.opacity = "1"
+            }}
+            onMouseLeave={(e) => {
+              const target = e.currentTarget as HTMLElement
+              target.style.transform = "translateY(16px)"
+              target.style.opacity = "0"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    backgroundColor: "#7c3aed",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Play style={{ width: "16px", height: "16px", color: "white" }} />
+                </div>
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    backgroundColor: "rgba(0, 0, 0, 0.5)",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Info style={{ width: "16px", height: "16px", color: "white" }} />
+                </div>
               </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   toggleFavorite(media)
                 }}
-                className="p-2 bg-black/70 rounded-full hover:bg-black/90 transition-colors"
+                style={{
+                  padding: "8px",
+                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  borderRadius: "50%",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "background-color 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  const target = e.currentTarget as HTMLElement
+                  target.style.backgroundColor = "rgba(0, 0, 0, 0.9)"
+                }}
+                onMouseLeave={(e) => {
+                  const target = e.currentTarget as HTMLElement
+                  target.style.backgroundColor = "rgba(0, 0, 0, 0.7)"
+                }}
               >
                 <Heart
-                  className={`w-4 h-4 ${favorites.includes(media.tmdbId) ? "fill-red-500 text-red-500" : "text-white"}`}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    color: favorites.includes(media.tmdbId) ? "#ef4444" : "white",
+                    fill: favorites.includes(media.tmdbId) ? "#ef4444" : "none",
+                  }}
                 />
               </button>
             </div>
@@ -464,14 +592,35 @@ function BrowseContent() {
         </div>
 
         {/* Info */}
-        <div className="p-4">
-          <h3 className="font-semibold text-white text-sm mb-2 line-clamp-2">{media.title}</h3>
-          <div className="flex items-center justify-between text-xs text-[#888]">
+        <div style={{ padding: "16px" }}>
+          <h3
+            style={{
+              fontWeight: "600",
+              color: "white",
+              fontSize: "14px",
+              marginBottom: "8px",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {media.title}
+          </h3>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: "12px",
+              color: "#888",
+            }}
+          >
             <span>{media.year}</span>
             {media.rating && (
-              <div className="flex items-center">
-                <Star className="w-3 h-3 text-yellow-500 mr-1" />
-                <span className="text-yellow-500">{media.rating.toFixed(1)}</span>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <Star style={{ width: "12px", height: "12px", color: "#eab308", marginRight: "4px" }} />
+                <span style={{ color: "#eab308" }}>{media.rating.toFixed(1)}</span>
               </div>
             )}
           </div>
@@ -481,78 +630,186 @@ function BrowseContent() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] text-[#e0e0e0]">
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+        color: "#e0e0e0",
+      }}
+    >
       {/* Header */}
-      <div className="border-b border-purple-500/20 bg-black/60 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4">
+      <div
+        style={{
+          borderBottom: "1px solid rgba(147, 51, 234, 0.2)",
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(20px)",
+          position: "sticky",
+          top: "0",
+          zIndex: "50",
+        }}
+      >
+        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "24px 32px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               <button
                 onClick={() => router.push("/")}
-                className="p-2 hover:bg-purple-600/20 rounded-xl transition-colors"
+                style={{
+                  padding: "8px",
+                  backgroundColor: "transparent",
+                  border: "none",
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  transition: "background-color 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  const target = e.currentTarget as HTMLElement
+                  target.style.backgroundColor = "rgba(147, 51, 234, 0.2)"
+                }}
+                onMouseLeave={(e) => {
+                  const target = e.currentTarget as HTMLElement
+                  target.style.backgroundColor = "transparent"
+                }}
               >
-                <ArrowLeft className="w-5 h-5 text-purple-400" />
+                <ArrowLeft style={{ width: "20px", height: "20px", color: "#a855f7" }} />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-white">Browse Content</h1>
-                <p className="text-[#888] text-sm">{getFilterSummary()}</p>
+                <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "white", margin: "0" }}>Browse Content</h1>
+                <p style={{ color: "#888", fontSize: "14px", margin: "0" }}>{getFilterSummary()}</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
               {/* View Mode Toggle */}
-              <div className="flex bg-black/60 rounded-xl border border-purple-500/30">
+              <div
+                style={{
+                  display: "flex",
+                  backgroundColor: "rgba(0, 0, 0, 0.6)",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(147, 51, 234, 0.3)",
+                }}
+              >
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-l-xl transition-colors ${
-                    viewMode === "grid" ? "bg-purple-600 text-white" : "text-[#888] hover:text-white"
-                  }`}
+                  style={{
+                    padding: "8px",
+                    borderRadius: "12px 0 0 12px",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    backgroundColor: viewMode === "grid" ? "#7c3aed" : "transparent",
+                    color: viewMode === "grid" ? "white" : "#888",
+                  }}
                 >
-                  <Grid3X3 className="w-4 h-4" />
+                  <Grid3X3 style={{ width: "16px", height: "16px" }} />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-r-xl transition-colors ${
-                    viewMode === "list" ? "bg-purple-600 text-white" : "text-[#888] hover:text-white"
-                  }`}
+                  style={{
+                    padding: "8px",
+                    borderRadius: "0 12px 12px 0",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    backgroundColor: viewMode === "list" ? "#7c3aed" : "transparent",
+                    color: viewMode === "list" ? "white" : "#888",
+                  }}
                 >
-                  <List className="w-4 h-4" />
+                  <List style={{ width: "16px", height: "16px" }} />
                 </button>
               </div>
 
               {/* Sort Options */}
-              <div className="relative">
+              <div style={{ position: "relative" }}>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="bg-black/60 border border-purple-500/30 rounded-xl px-4 py-2 text-white text-sm focus:border-purple-500 transition-colors appearance-none pr-8"
+                  style={{
+                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    border: "1px solid rgba(147, 51, 234, 0.3)",
+                    borderRadius: "12px",
+                    padding: "8px 32px 8px 16px",
+                    color: "white",
+                    fontSize: "14px",
+                    appearance: "none",
+                    cursor: "pointer",
+                  }}
                 >
                   <option value="popularity">Popularity</option>
                   <option value="rating">Rating</option>
                   <option value="year">Year</option>
                   <option value="title">Title</option>
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#888] pointer-events-none" />
+                <ChevronDown
+                  style={{
+                    position: "absolute",
+                    right: "8px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "16px",
+                    height: "16px",
+                    color: "#888",
+                    pointerEvents: "none",
+                  }}
+                />
               </div>
 
               <button
                 onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                className="p-2 bg-black/60 border border-purple-500/30 rounded-xl hover:border-purple-500 transition-colors"
+                style={{
+                  padding: "8px",
+                  backgroundColor: "rgba(0, 0, 0, 0.6)",
+                  border: "1px solid rgba(147, 51, 234, 0.3)",
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  transition: "border-color 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  const target = e.currentTarget as HTMLElement
+                  target.style.borderColor = "#7c3aed"
+                }}
+                onMouseLeave={(e) => {
+                  const target = e.currentTarget as HTMLElement
+                  target.style.borderColor = "rgba(147, 51, 234, 0.3)"
+                }}
               >
-                {sortOrder === "asc" ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                {sortOrder === "asc" ? (
+                  <SortAsc style={{ width: "16px", height: "16px", color: "white" }} />
+                ) : (
+                  <SortDesc style={{ width: "16px", height: "16px", color: "white" }} />
+                )}
               </button>
 
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`p-2 rounded-xl transition-colors relative ${
-                  showFilters
-                    ? "bg-purple-600 text-white"
-                    : "bg-black/60 border border-purple-500/30 text-[#888] hover:text-white"
-                }`}
+                style={{
+                  padding: "8px",
+                  borderRadius: "12px",
+                  border: showFilters ? "none" : "1px solid rgba(147, 51, 234, 0.3)",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  position: "relative",
+                  backgroundColor: showFilters ? "#7c3aed" : "rgba(0, 0, 0, 0.6)",
+                  color: showFilters ? "white" : "#888",
+                }}
               >
-                <Filter className="w-4 h-4" />
+                <Filter style={{ width: "16px", height: "16px" }} />
                 {getActiveFiltersCount() > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "-4px",
+                      right: "-4px",
+                      backgroundColor: "#ef4444",
+                      color: "white",
+                      fontSize: "12px",
+                      borderRadius: "50%",
+                      width: "20px",
+                      height: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     {getActiveFiltersCount()}
                   </span>
                 )}
@@ -562,36 +819,89 @@ function BrowseContent() {
 
           {/* Filters */}
           {showFilters && (
-            <div className="bg-black/80 border border-purple-500/30 rounded-xl p-6 backdrop-blur-xl">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-white font-semibold">Filters</h3>
+            <div
+              style={{
+                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                border: "1px solid rgba(147, 51, 234, 0.3)",
+                borderRadius: "12px",
+                padding: "24px",
+                backdropFilter: "blur(20px)",
+              }}
+            >
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}
+              >
+                <h3 style={{ color: "white", fontWeight: "600", margin: "0" }}>Filters</h3>
                 <button
                   onClick={clearFilters}
-                  className="text-[#666] hover:text-white text-sm flex items-center transition-colors"
+                  style={{
+                    color: "#666",
+                    backgroundColor: "transparent",
+                    border: "none",
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    cursor: "pointer",
+                    transition: "color 0.3s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    const target = e.currentTarget as HTMLElement
+                    target.style.color = "white"
+                  }}
+                  onMouseLeave={(e) => {
+                    const target = e.currentTarget as HTMLElement
+                    target.style.color = "#666"
+                  }}
                 >
-                  <X className="w-4 h-4 mr-1" />
+                  <X style={{ width: "16px", height: "16px", marginRight: "4px" }} />
                   Clear All
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: "16px",
+                }}
+              >
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Search</label>
+                  <label style={{ display: "block", fontSize: "14px", color: "#888", marginBottom: "8px" }}>
+                    Search
+                  </label>
                   <input
                     type="text"
                     value={filters.query}
                     onChange={(e) => handleFilterChange({ query: e.target.value })}
                     placeholder="Search titles..."
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      backgroundColor: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(147, 51, 234, 0.3)",
+                      borderRadius: "12px",
+                      color: "white",
+                      fontSize: "14px",
+                    }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Content Type</label>
+                  <label style={{ display: "block", fontSize: "14px", color: "#888", marginBottom: "8px" }}>
+                    Content Type
+                  </label>
                   <select
                     value={filters.mediaType}
                     onChange={(e) => handleFilterChange({ mediaType: e.target.value as "all" | "movie" | "tv" })}
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      backgroundColor: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(147, 51, 234, 0.3)",
+                      borderRadius: "12px",
+                      color: "white",
+                      fontSize: "14px",
+                    }}
                   >
                     <option value="all">All</option>
                     <option value="movie">Movies</option>
@@ -600,11 +910,21 @@ function BrowseContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Genre</label>
+                  <label style={{ display: "block", fontSize: "14px", color: "#888", marginBottom: "8px" }}>
+                    Genre
+                  </label>
                   <select
                     value={filters.genre}
                     onChange={(e) => handleFilterChange({ genre: e.target.value })}
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      backgroundColor: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(147, 51, 234, 0.3)",
+                      borderRadius: "12px",
+                      color: "white",
+                      fontSize: "14px",
+                    }}
                   >
                     <option value="">All Genres</option>
                     {genres.map((genre) => (
@@ -616,31 +936,59 @@ function BrowseContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Year Range</label>
-                  <div className="flex space-x-2">
+                  <label style={{ display: "block", fontSize: "14px", color: "#888", marginBottom: "8px" }}>
+                    Year Range
+                  </label>
+                  <div style={{ display: "flex", gap: "8px" }}>
                     <input
                       type="number"
                       value={filters.yearFrom}
                       onChange={(e) => handleFilterChange({ yearFrom: e.target.value })}
                       placeholder="From"
-                      className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                        border: "1px solid rgba(147, 51, 234, 0.3)",
+                        borderRadius: "12px",
+                        color: "white",
+                        fontSize: "14px",
+                      }}
                     />
                     <input
                       type="number"
                       value={filters.yearTo}
                       onChange={(e) => handleFilterChange({ yearTo: e.target.value })}
                       placeholder="To"
-                      className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        backgroundColor: "rgba(0, 0, 0, 0.6)",
+                        border: "1px solid rgba(147, 51, 234, 0.3)",
+                        borderRadius: "12px",
+                        color: "white",
+                        fontSize: "14px",
+                      }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-[#888] mb-2">Min Rating</label>
+                  <label style={{ display: "block", fontSize: "14px", color: "#888", marginBottom: "8px" }}>
+                    Min Rating
+                  </label>
                   <select
                     value={filters.minRating}
                     onChange={(e) => handleFilterChange({ minRating: e.target.value })}
-                    className="w-full p-3 bg-black/60 border border-purple-500/30 rounded-xl text-white focus:border-purple-500 transition-colors"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      backgroundColor: "rgba(0, 0, 0, 0.6)",
+                      border: "1px solid rgba(147, 51, 234, 0.3)",
+                      borderRadius: "12px",
+                      color: "white",
+                      fontSize: "14px",
+                    }}
                   >
                     <option value="">Any Rating</option>
                     <option value="7">7.0+</option>
@@ -653,7 +1001,16 @@ function BrowseContent() {
           )}
 
           {/* Results Summary */}
-          <div className="flex items-center justify-between mt-4 text-sm text-[#888]">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginTop: "16px",
+              fontSize: "14px",
+              color: "#888",
+            }}
+          >
             <span>{isLoading ? "Loading..." : `${totalResults.toLocaleString()} results found`}</span>
             <span>Page {currentPage}</span>
           </div>
@@ -661,15 +1018,18 @@ function BrowseContent() {
       </div>
 
       {/* Results Grid */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "32px" }}>
         {results.length > 0 ? (
           <>
             <div
-              className={`grid gap-6 ${
-                viewMode === "grid"
-                  ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-              }`}
+              style={{
+                display: "grid",
+                gap: "24px",
+                gridTemplateColumns:
+                  viewMode === "grid"
+                    ? "repeat(auto-fill, minmax(180px, 1fr))"
+                    : "repeat(auto-fill, minmax(300px, 1fr))",
+              }}
             >
               {results.map((media) => (
                 <MediaCard key={`${media.mediaType}-${media.tmdbId}`} media={media} />
@@ -678,11 +1038,33 @@ function BrowseContent() {
 
             {/* Load More */}
             {results.length < totalResults && (
-              <div className="text-center mt-12">
+              <div style={{ textAlign: "center", marginTop: "48px" }}>
                 <button
                   onClick={loadMore}
                   disabled={isLoading}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-8 py-3 rounded-xl font-medium transition-colors"
+                  style={{
+                    backgroundColor: "#7c3aed",
+                    color: "white",
+                    padding: "12px 32px",
+                    borderRadius: "12px",
+                    fontWeight: "500",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "background-color 0.3s ease",
+                    opacity: isLoading ? "0.5" : "1",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isLoading) {
+                      const target = e.currentTarget as HTMLElement
+                      target.style.backgroundColor = "#6d28d9"
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isLoading) {
+                      const target = e.currentTarget as HTMLElement
+                      target.style.backgroundColor = "#7c3aed"
+                    }
+                  }}
                 >
                   {isLoading ? "Loading..." : "Load More"}
                 </button>
@@ -690,30 +1072,51 @@ function BrowseContent() {
             )}
           </>
         ) : (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Search className="w-10 h-10 text-white" />
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <div
+              style={{
+                width: "80px",
+                height: "80px",
+                background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+                borderRadius: "16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px",
+              }}
+            >
+              <Search style={{ width: "40px", height: "40px", color: "white" }} />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">No Results Found</h2>
-            <p className="text-[#888] mb-6">Try adjusting your filters or search terms</p>
+            <h2 style={{ fontSize: "24px", fontWeight: "bold", color: "white", marginBottom: "8px" }}>
+              No Results Found
+            </h2>
+            <p style={{ color: "#888", marginBottom: "24px" }}>Try adjusting your filters or search terms</p>
             <button
               onClick={clearFilters}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-colors"
+              style={{
+                backgroundColor: "#7c3aed",
+                color: "white",
+                padding: "12px 24px",
+                borderRadius: "12px",
+                fontWeight: "500",
+                border: "none",
+                cursor: "pointer",
+                transition: "background-color 0.3s ease",
+              }}
+              onMouseEnter={(e) => {
+                const target = e.currentTarget as HTMLElement
+                target.style.backgroundColor = "#6d28d9"
+              }}
+              onMouseLeave={(e) => {
+                const target = e.currentTarget as HTMLElement
+                target.style.backgroundColor = "#7c3aed"
+              }}
             >
               Clear All Filters
             </button>
           </div>
         )}
       </div>
-
-      <style jsx>{`
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
     </div>
   )
 }
@@ -722,8 +1125,16 @@ export default function BrowsePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] flex items-center justify-center">
-          <div className="text-purple-400 animate-pulse">Loading...</div>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ color: "#a855f7", animation: "pulse 2s infinite" }}>Loading...</div>
         </div>
       }
     >
