@@ -18,53 +18,73 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // First, check if the access code exists and is active
-    const { data: existingCode, error: fetchError } = await supabase
-      .from("access_codes")
-      .select("*")
-      .eq("id", codeId)
-      .single()
+    // First, check if the access code exists
+    const { data: existingCodes, error: fetchError } = await supabase.from("access_codes").select("*").eq("id", codeId)
 
     if (fetchError) {
       console.error("❌ Error fetching access code:", fetchError)
       return NextResponse.json(
         {
           success: false,
-          error: "Access code not found",
+          error: "Database error while fetching access code",
           details: fetchError.message,
+        },
+        { status: 500 },
+      )
+    }
+
+    if (!existingCodes || existingCodes.length === 0) {
+      console.log("❌ Access code not found")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Access code not found",
         },
         { status: 404 },
       )
     }
 
+    const existingCode = existingCodes[0]
     console.log("📊 Found access code:", {
       id: existingCode.id,
       code: existingCode.code,
       is_active: existingCode.is_active,
+      is_used: existingCode.is_used,
       used_at: existingCode.used_at,
       expires_at: existingCode.expires_at,
     })
 
     // Check if already revoked/used
-    if (!existingCode.is_active || existingCode.used_at) {
-      console.log("❌ Access code is already inactive or used")
+    if (existingCode.is_used || existingCode.used_at) {
+      console.log("❌ Access code is already used")
       return NextResponse.json(
         {
           success: false,
-          error: "Access code is already inactive or has been used",
+          error: "Access code is already used or revoked",
         },
         { status: 400 },
       )
     }
 
-    // Revoke the access code
+    if (!existingCode.is_active) {
+      console.log("❌ Access code is already inactive")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Access code is already inactive",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Revoke the access code (don't set used_by since it expects a UUID)
     const { error: updateError } = await supabase
       .from("access_codes")
       .update({
         is_active: false,
         is_used: true,
         used_at: new Date().toISOString(),
-        used_by: "admin-revoked",
+        // Remove used_by field since it expects a UUID and we don't have an admin user ID
       })
       .eq("id", codeId)
 
