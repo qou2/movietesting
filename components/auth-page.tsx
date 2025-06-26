@@ -2,26 +2,19 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Play, User, UserPlus, Eye, EyeOff, AlertCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 
 interface AuthPageProps {
   onAuthSuccess: () => void
 }
 
 export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
-  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [activeTab, setActiveTab] = useState<"login" | "register">("login")
 
-  // Login
+  // Login form state
   const [loginData, setLoginData] = useState({
     username: "",
     password: "",
@@ -36,11 +29,18 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   })
 
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+
+  const showToast = (title: string, description: string) => {
+    setSuccess(`${title}: ${description}`)
+    setTimeout(() => setSuccess(""), 5000)
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
+    setSuccess("")
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -48,17 +48,15 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(loginData),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        toast({
-          title: "Welcome back!",
-          description: `Logged in as ${data.user.username}`,
-        })
-        onAuthSuccess()
+        showToast("Welcome back!", `Logged in as ${data.user.username}`)
+        setTimeout(() => onAuthSuccess(), 1000)
       } else {
         setError(data.error || "Login failed")
       }
@@ -73,6 +71,7 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
     e.preventDefault()
     setIsLoading(true)
     setError("")
+    setSuccess("")
 
     try {
       const response = await fetch("/api/auth/register", {
@@ -80,17 +79,15 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(registerData),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        toast({
-          title: "Account created!",
-          description: `Welcome to Movie Time, ${data.user.username}!`,
-        })
-        onAuthSuccess()
+        showToast("Account created!", `Welcome to Movie Time, ${data.user.username}!`)
+        setTimeout(() => onAuthSuccess(), 1000)
       } else {
         setError(data.error || "Registration failed")
       }
@@ -101,313 +98,345 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
     }
   }
 
-  return (
-    <div
-      className="min-h-screen text-white flex items-center justify-center p-8"
-      style={{
-        background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
-        color: "#e0e0e0",
-        minHeight: "100vh",
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-      }}
-    >
-      {/* Grain texture overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+  const containerStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+    color: "#e0e0e0",
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "2rem",
+  }
 
-      <div className="w-full max-w-md">
+  const cardStyle: React.CSSProperties = {
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    border: "2px solid rgba(147, 51, 234, 0.3)",
+    borderRadius: "12px",
+    padding: "2rem",
+    width: "100%",
+    maxWidth: "400px",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.75rem",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    border: "1px solid rgba(147, 51, 234, 0.3)",
+    borderRadius: "6px",
+    color: "white",
+    fontSize: "1rem",
+    outline: "none",
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.75rem 1rem",
+    background: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    fontSize: "1rem",
+    fontWeight: "600",
+    cursor: isLoading ? "not-allowed" : "pointer",
+    opacity: isLoading ? 0.7 : 1,
+    transition: "all 0.2s",
+  }
+
+  const tabStyle: React.CSSProperties = {
+    flex: 1,
+    padding: "0.75rem",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    color: "white",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "0.875rem",
+    fontWeight: "500",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+    transition: "all 0.2s",
+  }
+
+  const activeTabStyle: React.CSSProperties = {
+    ...tabStyle,
+    backgroundColor: "#9333ea",
+  }
+
+  return (
+    <div style={containerStyle}>
+      <div style={{ width: "100%", maxWidth: "400px" }}>
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center mr-4"
               style={{
+                width: "48px",
+                height: "48px",
                 background: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: "1rem",
               }}
             >
-              <Play className="w-6 h-6 text-white" />
+              <Play size={24} color="white" />
             </div>
             <h1
-              className="text-4xl font-bold"
               style={{
+                fontSize: "2.5rem",
+                fontWeight: "bold",
                 background: "linear-gradient(135deg, #a855f7 0%, #f472b6 50%, #9333ea 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
+                margin: 0,
               }}
             >
               movie time
             </h1>
           </div>
-          <p style={{ color: "#888", fontSize: "1.125rem" }}>Sign in to access unlimited streaming</p>
+          <p style={{ color: "#888", fontSize: "1.125rem", margin: 0 }}>Sign in to access unlimited streaming</p>
         </div>
 
-        <Card
-          className="border-2 backdrop-blur-xl"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.6)",
-            borderColor: "rgba(147, 51, 234, 0.3)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          <CardHeader className="text-center">
-            <CardTitle style={{ color: "white" }}>Welcome</CardTitle>
-            <CardDescription style={{ color: "#888" }}>Sign in to your account or create a new one</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2" style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}>
-                <TabsTrigger value="login" className="data-[state=active]:bg-purple-600" style={{ color: "white" }}>
-                  <User className="w-4 h-4 mr-2" />
-                  Sign In
-                </TabsTrigger>
-                <TabsTrigger value="register" className="data-[state=active]:bg-purple-600" style={{ color: "white" }}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Sign Up
-                </TabsTrigger>
-              </TabsList>
+        <div style={cardStyle}>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+            <h2 style={{ color: "white", fontSize: "1.5rem", fontWeight: "600", margin: "0 0 0.5rem 0" }}>Welcome</h2>
+            <p style={{ color: "#888", fontSize: "0.875rem", margin: 0 }}>
+              Sign in to your account or create a new one
+            </p>
+          </div>
 
-              {error && (
-                <Alert
-                  className="mt-4"
-                  style={{
-                    borderColor: "rgba(239, 68, 68, 0.3)",
-                    backgroundColor: "rgba(239, 68, 68, 0.1)",
-                  }}
-                >
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription style={{ color: "#f87171" }}>{error}</AlertDescription>
-                </Alert>
-              )}
+          {/* Tabs */}
+          <div style={{ display: "flex", marginBottom: "1.5rem", borderRadius: "6px", overflow: "hidden" }}>
+            <button style={activeTab === "login" ? activeTabStyle : tabStyle} onClick={() => setActiveTab("login")}>
+              <User size={16} />
+              Sign In
+            </button>
+            <button
+              style={activeTab === "register" ? activeTabStyle : tabStyle}
+              onClick={() => setActiveTab("register")}
+            >
+              <UserPlus size={16} />
+              Sign Up
+            </button>
+          </div>
 
-              <TabsContent value="login" className="space-y-4 mt-6">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-username" style={{ color: "white" }}>
-                      Username
-                    </Label>
-                    <Input
-                      id="login-username"
-                      type="text"
-                      value={loginData.username}
-                      onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-                      placeholder="Enter your username"
-                      required
-                      disabled={isLoading}
-                      style={{
-                        backgroundColor: "rgba(0, 0, 0, 0.6)",
-                        borderColor: "rgba(147, 51, 234, 0.3)",
-                        color: "white",
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password" style={{ color: "white" }}>
-                      Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        value={loginData.password}
-                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                        placeholder="Enter your password"
-                        required
-                        disabled={isLoading}
-                        style={{
-                          backgroundColor: "rgba(0, 0, 0, 0.6)",
-                          borderColor: "rgba(147, 51, 234, 0.3)",
-                          color: "white",
-                          paddingRight: "2.5rem",
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{
-                          position: "absolute",
-                          right: "0.75rem",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          color: "#888",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
+          {/* Success Message */}
+          {success && (
+            <div
+              style={{
+                padding: "0.75rem",
+                backgroundColor: "rgba(34, 197, 94, 0.1)",
+                border: "1px solid rgba(34, 197, 94, 0.3)",
+                borderRadius: "6px",
+                color: "#4ade80",
+                fontSize: "0.875rem",
+                marginBottom: "1rem",
+              }}
+            >
+              {success}
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div
+              style={{
+                padding: "0.75rem",
+                backgroundColor: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                borderRadius: "6px",
+                color: "#f87171",
+                fontSize: "0.875rem",
+                marginBottom: "1rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+
+          {/* Login Form */}
+          {activeTab === "login" && (
+            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", color: "white", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={loginData.username}
+                  onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
+                  placeholder="Enter your username"
+                  required
+                  disabled={isLoading}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", color: "white", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={loginData.password}
+                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                    placeholder="Enter your password"
+                    required
                     disabled={isLoading}
+                    style={{ ...inputStyle, paddingRight: "3rem" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
                     style={{
-                      background: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
-                      color: "white",
+                      position: "absolute",
+                      right: "0.75rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
                       border: "none",
-                      padding: "0.5rem 1rem",
-                      borderRadius: "0.375rem",
-                      cursor: isLoading ? "not-allowed" : "pointer",
-                      opacity: isLoading ? 0.7 : 1,
+                      color: "#888",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
                     }}
                   >
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                </form>
-              </TabsContent>
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" disabled={isLoading} style={buttonStyle}>
+                {isLoading ? "Signing in..." : "Sign In"}
+              </button>
+            </form>
+          )}
 
-              <TabsContent value="register" className="space-y-4 mt-6">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="register-username" style={{ color: "white" }}>
-                      Username
-                    </Label>
-                    <Input
-                      id="register-username"
-                      type="text"
-                      value={registerData.username}
-                      onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                      placeholder="Choose a username (min 3 characters)"
-                      required
-                      disabled={isLoading}
-                      minLength={3}
-                      style={{
-                        backgroundColor: "rgba(0, 0, 0, 0.6)",
-                        borderColor: "rgba(147, 51, 234, 0.3)",
-                        color: "white",
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password" style={{ color: "white" }}>
-                      Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="register-password"
-                        type={showPassword ? "text" : "password"}
-                        value={registerData.password}
-                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                        placeholder="Create a password (min 6 characters)"
-                        required
-                        disabled={isLoading}
-                        minLength={6}
-                        style={{
-                          backgroundColor: "rgba(0, 0, 0, 0.6)",
-                          borderColor: "rgba(147, 51, 234, 0.3)",
-                          color: "white",
-                          paddingRight: "2.5rem",
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{
-                          position: "absolute",
-                          right: "0.75rem",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          color: "#888",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-confirm-password" style={{ color: "white" }}>
-                      Confirm Password
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="register-confirm-password"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={registerData.confirmPassword}
-                        onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                        placeholder="Confirm your password"
-                        required
-                        disabled={isLoading}
-                        style={{
-                          backgroundColor: "rgba(0, 0, 0, 0.6)",
-                          borderColor: "rgba(147, 51, 234, 0.3)",
-                          color: "white",
-                          paddingRight: "2.5rem",
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        style={{
-                          position: "absolute",
-                          right: "0.75rem",
-                          top: "50%",
-                          transform: "translateY(-50%)",
-                          color: "#888",
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-access-code" style={{ color: "white" }}>
-                      Access Code
-                    </Label>
-                    <Input
-                      id="register-access-code"
-                      type="text"
-                      value={registerData.accessCode}
-                      onChange={(e) => setRegisterData({ ...registerData, accessCode: e.target.value.toUpperCase() })}
-                      placeholder="Enter your access code"
-                      required
-                      disabled={isLoading}
-                      style={{
-                        backgroundColor: "rgba(0, 0, 0, 0.6)",
-                        borderColor: "rgba(147, 51, 234, 0.3)",
-                        color: "white",
-                        fontFamily: "monospace",
-                      }}
-                    />
-                    <p style={{ fontSize: "0.75rem", color: "#666" }}>
-                      You need a valid access code to create an account
-                    </p>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
+          {/* Register Form */}
+          {activeTab === "register" && (
+            <form onSubmit={handleRegister} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", color: "white", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={registerData.username}
+                  onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
+                  placeholder="Choose a username (min 3 characters)"
+                  required
+                  disabled={isLoading}
+                  minLength={3}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", color: "white", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={registerData.password}
+                    onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                    placeholder="Create a password (min 6 characters)"
+                    required
                     disabled={isLoading}
+                    minLength={6}
+                    style={{ ...inputStyle, paddingRight: "3rem" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
                     style={{
-                      background: "linear-gradient(135deg, #9333ea 0%, #ec4899 100%)",
-                      color: "white",
+                      position: "absolute",
+                      right: "0.75rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
                       border: "none",
-                      padding: "0.5rem 1rem",
-                      borderRadius: "0.375rem",
-                      cursor: isLoading ? "not-allowed" : "pointer",
-                      opacity: isLoading ? 0.7 : 1,
+                      color: "#888",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
                     }}
                   >
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "block", color: "white", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  Confirm Password
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={registerData.confirmPassword}
+                    onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
+                    placeholder="Confirm your password"
+                    required
+                    disabled={isLoading}
+                    style={{ ...inputStyle, paddingRight: "3rem" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "0.75rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "#888",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: "block", color: "white", fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  Access Code
+                </label>
+                <input
+                  type="text"
+                  value={registerData.accessCode}
+                  onChange={(e) => setRegisterData({ ...registerData, accessCode: e.target.value.toUpperCase() })}
+                  placeholder="Enter your access code"
+                  required
+                  disabled={isLoading}
+                  style={{ ...inputStyle, fontFamily: "monospace" }}
+                />
+                <p style={{ fontSize: "0.75rem", color: "#666", margin: "0.25rem 0 0 0" }}>
+                  You need a valid access code to create an account
+                </p>
+              </div>
+              <button type="submit" disabled={isLoading} style={buttonStyle}>
+                {isLoading ? "Creating account..." : "Create Account"}
+              </button>
+            </form>
+          )}
+        </div>
 
-        <div className="mt-8 text-center">
-          <p style={{ color: "#666", fontSize: "0.875rem" }}>Need an access code? Contact an administrator</p>
+        <div style={{ marginTop: "2rem", textAlign: "center" }}>
+          <p style={{ color: "#666", fontSize: "0.875rem", margin: 0 }}>
+            Need an access code? Contact an administrator
+          </p>
         </div>
       </div>
     </div>
