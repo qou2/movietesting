@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string }
 
-    // Get fresh user data
+    // Get fresh data
     const { data: user, error } = await supabase
       .from("user_profiles")
       .select("id, username, created_at, last_active")
