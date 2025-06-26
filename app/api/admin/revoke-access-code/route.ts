@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // First, check if the access code exists
+    // First, check if the access code exists and get its current state
     const { data: existingCodes, error: fetchError } = await supabase.from("access_codes").select("*").eq("id", codeId)
 
     if (fetchError) {
@@ -52,41 +52,63 @@ export async function POST(request: Request) {
       is_used: existingCode.is_used,
       used_at: existingCode.used_at,
       expires_at: existingCode.expires_at,
+      admin_action: existingCode.admin_action,
     })
 
-    // Check if already revoked/used
-    if (existingCode.is_used || existingCode.used_at) {
+    // Check if already revoked/used - be more flexible with the checks
+    const isAlreadyUsed = existingCode.is_used === true || existingCode.used_at !== null
+    const isInactive = existingCode.is_active === false
+    const isExpired = new Date(existingCode.expires_at) < new Date()
+
+    if (isAlreadyUsed) {
       console.log("❌ Access code is already used")
       return NextResponse.json(
         {
           success: false,
-          error: "Access code is already used or revoked",
+          error: "Access code is already used",
         },
         { status: 400 },
       )
     }
 
-    if (!existingCode.is_active) {
-      console.log("❌ Access code is already inactive")
+    if (isInactive && existingCode.admin_action) {
+      console.log("❌ Access code is already revoked by admin")
       return NextResponse.json(
         {
           success: false,
-          error: "Access code is already inactive",
+          error: "Access code is already revoked",
         },
         { status: 400 },
       )
     }
 
-    // Revoke the access code (don't set used_by since it expects a UUID)
-    const { error: updateError } = await supabase
-      .from("access_codes")
-      .update({
-        is_active: false,
-        is_used: true,
-        used_at: new Date().toISOString(),
-        // Remove used_by field since it expects a UUID and we don't have an admin user ID
-      })
-      .eq("id", codeId)
+    if (isExpired) {
+      console.log("❌ Access code has expired")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Access code has expired",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Revoke the access code
+    console.log("🔐 Revoking access code...")
+    const updateData: any = {
+      is_active: false,
+      admin_action: "revoked_by_admin",
+    }
+
+    // Only set is_used and used_at if they exist in the schema
+    if (existingCode.hasOwnProperty("is_used")) {
+      updateData.is_used = true
+    }
+    if (existingCode.hasOwnProperty("used_at")) {
+      updateData.used_at = new Date().toISOString()
+    }
+
+    const { error: updateError } = await supabase.from("access_codes").update(updateData).eq("id", codeId)
 
     if (updateError) {
       console.error("❌ Error revoking access code:", updateError)
