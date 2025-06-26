@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { v4 as uuidv4 } from "uuid"
+import { useAuth } from "@/components/auth-guard"
 
 interface Media {
   title: string
@@ -27,90 +27,32 @@ interface Media {
 }
 
 export function useDatabase() {
-  // Add this at the very beginning of the useDatabase function
-  useEffect(() => {
-    // Prevent any stray API calls that might cause errors, but allow access code generation
-    const originalFetch = window.fetch
-    window.fetch = function (...args) {
-      const url = args[0]
-      if (typeof url === "string") {
-        // Only block specific problematic endpoints, not the access code generation
-        if (url.includes("generate-new-access-code") && !url.includes("generate-access-code")) {
-          console.warn("Blocked call to generate-new-access-code endpoint")
-          return Promise.resolve(
-            new Response('{"success": true}', {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            }),
-          )
-        }
-      }
-      return originalFetch.apply(this, args)
-    }
-
-    return () => {
-      window.fetch = originalFetch
-    }
-  }, [])
-
-  const [userId, setUserId] = useState<string>("")
-  const [username, setUsername] = useState<string>("")
+  const { user } = useAuth()
   const [favorites, setFavorites] = useState<number[]>([])
   const [watchHistory, setWatchHistory] = useState<Media[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Initialize user
+  // Load user data when user changes
   useEffect(() => {
-    const initUser = async () => {
-      console.log("🚀 Initializing user...")
-
-      let storedUserId = localStorage.getItem("movie_app_user_id")
-
-      if (!storedUserId) {
-        storedUserId = uuidv4()
-        localStorage.setItem("movie_app_user_id", storedUserId)
-        console.log("✨ Created new user ID:", storedUserId)
-
-        // Create user profile
-        const { data, error } = await supabase.from("user_profiles").insert({ id: storedUserId }).select()
-        if (error) {
-          console.error("❌ Error creating user profile:", error)
-        } else {
-          console.log("✅ User profile created:", data)
-        }
-      } else {
-        console.log("👤 Found existing user ID:", storedUserId)
-
-        // Update last active
-        const { error } = await supabase.from("user_profiles").upsert({
-          id: storedUserId,
-          last_active: new Date().toISOString(),
-        })
-
-        if (error) {
-          console.error("❌ Error updating last active:", error)
-        } else {
-          console.log("✅ Updated last active")
-        }
-      }
-
-      setUserId(storedUserId)
-      await loadUserData(storedUserId)
+    if (user) {
+      loadUserData(user.id)
+    } else {
+      setFavorites([])
+      setWatchHistory([])
       setIsLoading(false)
     }
+  }, [user])
 
-    initUser()
-  }, [])
-
-  const loadUserData = async (uid: string) => {
-    console.log("📊 Loading user data for:", uid)
+  const loadUserData = async (userId: string) => {
+    console.log("📊 Loading user data for:", userId)
+    setIsLoading(true)
 
     try {
       // Load favorites
       const { data: favoritesData, error: favError } = await supabase
         .from("favorites")
         .select("*")
-        .eq("user_id", uid)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
 
       if (favError) {
@@ -124,7 +66,7 @@ export function useDatabase() {
       const { data: historyData, error: histError } = await supabase
         .from("watch_history")
         .select("*")
-        .eq("user_id", uid)
+        .eq("user_id", userId)
         .order("last_watched", { ascending: false })
         .limit(20)
 
@@ -157,28 +99,16 @@ export function useDatabase() {
 
         setWatchHistory(media)
       }
-
-      // Load user profile for username
-      const { data: profileData, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("username")
-        .eq("id", uid)
-        .single()
-
-      if (profileError) {
-        console.error("❌ Error loading user profile:", profileError)
-      } else {
-        console.log("👤 Loaded username:", profileData?.username)
-        setUsername(profileData?.username || "")
-      }
     } catch (error) {
       console.error("💥 Error loading user data:", error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const addToWatchHistory = async (media: Media) => {
-    if (!userId) {
-      console.log("❌ No userId available for watch history")
+    if (!user) {
+      console.log("❌ No user available for watch history")
       return
     }
 
@@ -186,7 +116,7 @@ export function useDatabase() {
 
     try {
       // Remove existing entry if it exists (for the same episode/movie)
-      let deleteQuery = supabase.from("watch_history").delete().eq("user_id", userId).eq("tmdb_id", media.tmdbId)
+      let deleteQuery = supabase.from("watch_history").delete().eq("user_id", user.id).eq("tmdb_id", media.tmdbId)
 
       // For TV shows, also match season and episode
       if (media.mediaType === "tv" && media.seasonNumber && media.episodeNumber) {
@@ -201,7 +131,7 @@ export function useDatabase() {
 
       // Prepare the data to insert
       const insertData = {
-        user_id: userId,
+        user_id: user.id,
         tmdb_id: media.tmdbId,
         imdb_id: media.imdbId || null,
         movie_title: media.title,
@@ -255,8 +185,8 @@ export function useDatabase() {
   }
 
   const toggleFavorite = async (media: Media) => {
-    if (!userId) {
-      console.log("❌ No userId available for favorites")
+    if (!user) {
+      console.log("❌ No user available for favorites")
       return
     }
 
@@ -264,7 +194,7 @@ export function useDatabase() {
 
     if (favorites.includes(media.tmdbId)) {
       // Remove from favorites
-      const { error } = await supabase.from("favorites").delete().eq("user_id", userId).eq("tmdb_id", media.tmdbId)
+      const { error } = await supabase.from("favorites").delete().eq("user_id", user.id).eq("tmdb_id", media.tmdbId)
 
       if (error) {
         console.error("❌ Error removing from favorites:", error)
@@ -275,7 +205,7 @@ export function useDatabase() {
     } else {
       // Add to favorites
       const insertData = {
-        user_id: userId,
+        user_id: user.id,
         tmdb_id: media.tmdbId,
         imdb_id: media.imdbId || null,
         movie_title: media.title,
@@ -301,13 +231,13 @@ export function useDatabase() {
   }
 
   const getFavoriteMedia = async (): Promise<Media[]> => {
-    if (!userId) return []
+    if (!user) return []
 
     try {
       const { data } = await supabase
         .from("favorites")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
       return (
@@ -331,45 +261,16 @@ export function useDatabase() {
     }
   }
 
-  const updateUsername = async (newUsername: string) => {
-    if (!userId) {
-      return { success: false, error: "No user ID available" }
-    }
-
-    try {
-      const response = await fetch("/api/update-username", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId, username: newUsername }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        // Update local state
-        setUsername(newUsername)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error }
-      }
-    } catch (error) {
-      console.error("Error updating username:", error)
-      return { success: false, error: "Failed to update username" }
-    }
-  }
-
   return {
-    userId,
-    username,
+    userId: user?.id || "",
+    username: user?.username || "",
     favorites,
     watchHistory,
     isLoading,
     toggleFavorite,
     addToWatchHistory,
     getFavoriteMedia,
-    updateUsername,
-    loadUserData: () => loadUserData(userId),
+    updateUsername: async () => ({ success: false, error: "Use account settings to update username" }),
+    loadUserData: () => user && loadUserData(user.id),
   }
 }
