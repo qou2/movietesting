@@ -46,6 +46,7 @@ export type Database = {
           used_by: string | null
           used_at: string | null
           is_active: boolean
+          is_used: boolean
         }
         Insert: {
           id?: string
@@ -56,6 +57,7 @@ export type Database = {
           used_by?: string | null
           used_at?: string | null
           is_active?: boolean
+          is_used?: boolean
         }
         Update: {
           id?: string
@@ -66,6 +68,7 @@ export type Database = {
           used_by?: string | null
           used_at?: string | null
           is_active?: boolean
+          is_used?: boolean
         }
       }
       favorites: {
