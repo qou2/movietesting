@@ -18,31 +18,55 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // First, check if the user exists
-    const { data: existingUser, error: fetchError } = await supabase
+    // First, check if the user exists (use select without single() to avoid errors)
+    const { data: existingUsers, error: fetchError } = await supabase
       .from("user_profiles")
       .select("id, username")
       .eq("id", userId)
-      .single()
 
     if (fetchError) {
       console.error("❌ Error fetching user:", fetchError)
       return NextResponse.json(
         {
           success: false,
-          error: "User not found",
+          error: "Database error while fetching user",
           details: fetchError.message,
+        },
+        { status: 500 },
+      )
+    }
+
+    if (!existingUsers || existingUsers.length === 0) {
+      console.log("❌ User not found")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "User not found",
         },
         { status: 404 },
       )
     }
 
+    if (existingUsers.length > 1) {
+      console.log("❌ Multiple users found with same ID")
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Multiple users found with same ID",
+        },
+        { status: 400 },
+      )
+    }
+
+    const existingUser = existingUsers[0]
     console.log("📊 Found user:", {
       id: existingUser.id,
       username: existingUser.username,
     })
 
-    // Start transaction-like operations
+    // Start cascading deletes
+    console.log("🗑️ Starting cascading deletes...")
+
     // Delete user's favorites
     const { error: favoritesError } = await supabase.from("favorites").delete().eq("user_id", userId)
 
@@ -70,7 +94,7 @@ export async function POST(request: Request) {
         is_active: false,
         is_used: true,
         used_at: new Date().toISOString(),
-        used_by: "user-deleted",
+        // Don't set used_by since it expects a UUID and we don't have an admin user ID
       })
       .eq("created_by", userId)
 
