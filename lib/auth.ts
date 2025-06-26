@@ -164,15 +164,15 @@ export async function createUser(username: string, password: string, accessCode:
     console.log("Hashing password...")
     const passwordHash = await hashPassword(password)
 
-    // Create user
+    // Create user - let Supabase auto-generate the ID
     console.log("Creating user...")
     const { data: newUser, error: userError } = await supabase
       .from("user_profiles")
       .insert({
         username,
         password_hash: passwordHash,
-        created_at: new Date().toISOString(),
-        last_active: new Date().toISOString(),
+        // Remove id field - let Supabase auto-generate it
+        // Remove created_at and last_active - let defaults handle them
       })
       .select()
       .single()
