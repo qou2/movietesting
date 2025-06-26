@@ -32,7 +32,6 @@ export function useDatabase() {
   const [watchHistory, setWatchHistory] = useState<Media[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load user data when user changes
   useEffect(() => {
     if (user) {
       loadUserData(user.id)
