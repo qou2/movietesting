@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string }
     const { currentPassword, newPassword, confirmPassword } = await request.json()
 
-    // Validation
+    //  
     if (!currentPassword || !newPassword || !confirmPassword) {
       return NextResponse.json({ success: false, error: "All fields are required" }, { status: 400 })
     }
