@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: result.error }, { status: 401 })
     }
 
-    // Create JWT token
+    // Create JWT 
     const token = jwt.sign(
       {
         userId: result.user.id,
