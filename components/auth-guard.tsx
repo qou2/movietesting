@@ -6,6 +6,7 @@ import { useState, useEffect, createContext, useContext } from "react"
 import type { User } from "@/lib/auth"
 import AuthPage from "./auth-page"
 
+
 interface AuthContextType {
   user: User | null
   isLoading: boolean
