@@ -2,7 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import SecurePasswordProtection from "@/components/secure-password-protection"
+import AuthGuard from "@/components/auth-guard"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -20,7 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <SecurePasswordProtection>{children}</SecurePasswordProtection>
+        <AuthGuard>
+          {children}
+          <Toaster />
+        </AuthGuard>
       </body>
     </html>
   )
