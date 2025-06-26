@@ -1,12 +1,16 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import { useDatabase } from "@/hooks/useDatabase"
+import { useAuth } from "@/components/auth-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   User,
   Film,
@@ -18,10 +22,11 @@ import {
   Calendar,
   BarChart3,
   Trophy,
-  Edit3,
-  Save,
-  X,
   AlertCircle,
+  Eye,
+  EyeOff,
+  LogOut,
+  Lock,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -49,17 +54,28 @@ interface LeaderboardEntry {
 }
 
 export default function AccountPage() {
-  const { userId, username, watchHistory, favorites, isLoading, updateUsername } = useDatabase()
+  const { user, logout } = useAuth()
+  const { watchHistory, favorites, isLoading } = useDatabase()
   const { toast } = useToast()
   const [accessCode, setAccessCode] = useState<AccessCode | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [isEditingUsername, setIsEditingUsername] = useState(false)
-  const [newUsername, setNewUsername] = useState("")
-  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false)
   const [generationError, setGenerationError] = useState<string | null>(null)
+
+  // Password change state
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  })
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
 
   // Calculate user statistics
   useEffect(() => {
@@ -82,10 +98,10 @@ export default function AccountPage() {
         tvShowsWatched,
         totalFavorites: favorites.length,
         watchTimeHours: Math.round(estimatedWatchTime / 60),
-        joinDate: new Date().toLocaleDateString(), // This would come from user profile in real app
+        joinDate: user ? new Date(user.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
       })
     }
-  }, [watchHistory, favorites, isLoading])
+  }, [watchHistory, favorites, isLoading, user])
 
   // Load leaderboard
   useEffect(() => {
@@ -105,7 +121,7 @@ export default function AccountPage() {
   }, [])
 
   const generateAccessCode = async () => {
-    if (!userId) {
+    if (!user) {
       toast({
         title: "Error",
         description: "User not authenticated",
@@ -118,14 +134,14 @@ export default function AccountPage() {
     setGenerationError(null)
 
     try {
-      console.log("Generating access code for user:", userId)
+      console.log("Generating access code for user:", user.id)
 
       const response = await fetch("/api/generate-access-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId: user.id }),
       })
 
       const data = await response.json()
@@ -165,51 +181,66 @@ export default function AccountPage() {
     }
   }
 
-  const handleUsernameEdit = () => {
-    setNewUsername(username)
-    setIsEditingUsername(true)
-  }
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
 
-  const handleUsernameSave = async () => {
-    if (!newUsername.trim()) {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
         title: "Error",
-        description: "Username cannot be empty",
+        description: "New passwords do not match",
         variant: "destructive",
       })
       return
     }
 
-    setIsUpdatingUsername(true)
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "New password must be at least 6 characters long",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsChangingPassword(true)
+
     try {
-      const result = await updateUsername(newUsername.trim())
-      if (result.success) {
-        setIsEditingUsername(false)
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(passwordData),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
         toast({
           title: "Success",
-          description: "Username updated successfully!",
+          description: "Password changed successfully!",
+        })
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
         })
       } else {
         toast({
           title: "Error",
-          description: result.error || "Failed to update username",
+          description: data.error || "Failed to change password",
           variant: "destructive",
         })
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to update username",
+        description: "Failed to change password",
         variant: "destructive",
       })
     } finally {
-      setIsUpdatingUsername(false)
+      setIsChangingPassword(false)
     }
-  }
-
-  const handleUsernameCancel = () => {
-    setIsEditingUsername(false)
-    setNewUsername("")
   }
 
   const copyToClipboard = async () => {
@@ -240,7 +271,7 @@ export default function AccountPage() {
   }
 
   const getUserRank = () => {
-    const userIndex = leaderboard.findIndex((entry) => entry.id === userId)
+    const userIndex = leaderboard.findIndex((entry) => entry.id === user?.id)
     return userIndex !== -1 ? userIndex + 1 : null
   }
 
@@ -271,7 +302,7 @@ export default function AccountPage() {
             </div>
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
-                {username ? `Welcome back, ${username}!` : "Account Dashboard"}
+                Welcome back, {user?.username}!
               </h1>
               {getUserRank() && <p className="text-[#888] text-lg">Ranked #{getUserRank()} on the leaderboard</p>}
             </div>
@@ -285,68 +316,30 @@ export default function AccountPage() {
             <CardHeader>
               <CardTitle className="flex items-center text-white">
                 <User className="w-5 h-5 mr-2 text-purple-400" />
-                User Information
+                Account Information
               </CardTitle>
-              <CardDescription className="text-[#888]">Your account details and identification</CardDescription>
+              <CardDescription className="text-[#888]">Your account details and settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-[#888] block mb-2">Username</label>
-                {isEditingUsername ? (
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      value={newUsername}
-                      onChange={(e) => setNewUsername(e.target.value)}
-                      placeholder="Enter username"
-                      className="bg-black/60 border-purple-500/30 text-white"
-                      disabled={isUpdatingUsername}
-                    />
-                    <Button
-                      onClick={handleUsernameSave}
-                      size="sm"
-                      disabled={isUpdatingUsername}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <Save className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      onClick={handleUsernameCancel}
-                      size="sm"
-                      variant="outline"
-                      className="border-red-500/30 hover:bg-red-600/20"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <div className="bg-purple-600/20 text-purple-300 px-3 py-2 rounded-lg text-sm flex-1">
-                      {username || "No username set"}
-                    </div>
-                    <Button
-                      onClick={handleUsernameEdit}
-                      size="sm"
-                      variant="outline"
-                      className="border-purple-500/30 hover:bg-purple-600/20"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
+                <div className="bg-purple-600/20 text-purple-300 px-3 py-2 rounded-lg text-sm">{user?.username}</div>
               </div>
 
               <div>
                 <label className="text-sm text-[#888] block mb-1">User ID</label>
                 <div className="flex items-center space-x-2">
                   <code className="bg-purple-600/20 text-purple-300 px-3 py-2 rounded-lg text-sm font-mono flex-1 break-all">
-                    {userId}
+                    {user?.id}
                   </code>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      navigator.clipboard.writeText(userId)
-                      toast({ title: "Copied!", description: "User ID copied to clipboard." })
+                      if (user?.id) {
+                        navigator.clipboard.writeText(user.id)
+                        toast({ title: "Copied!", description: "User ID copied to clipboard." })
+                      }
                     }}
                     className="border-purple-500/30 hover:bg-purple-600/20"
                   >
@@ -361,6 +354,19 @@ export default function AccountPage() {
                   <Calendar className="w-4 h-4 mr-2 text-purple-400" />
                   {userStats?.joinDate || "Today"}
                 </div>
+              </div>
+
+              <Separator className="bg-purple-500/20" />
+
+              <div>
+                <Button
+                  onClick={logout}
+                  variant="outline"
+                  className="w-full border-red-500/30 hover:bg-red-600/20 text-red-300"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -427,6 +433,106 @@ export default function AccountPage() {
           </Card>
         </div>
 
+        {/* Password Change */}
+        <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center text-white">
+              <Lock className="w-5 h-5 mr-2 text-purple-400" />
+              Change Password
+            </CardTitle>
+            <CardDescription className="text-[#888]">Update your account password</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordChange} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password" className="text-white">
+                    Current Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="current-password"
+                      type={showPasswords.current ? "text" : "password"}
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                      className="bg-black/60 border-purple-500/30 text-white pr-10"
+                      placeholder="Enter current password"
+                      required
+                      disabled={isChangingPassword}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                    >
+                      {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new-password" className="text-white">
+                    New Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="new-password"
+                      type={showPasswords.new ? "text" : "password"}
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                      className="bg-black/60 border-purple-500/30 text-white pr-10"
+                      placeholder="Enter new password"
+                      required
+                      disabled={isChangingPassword}
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                    >
+                      {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password" className="text-white">
+                    Confirm Password
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirm-password"
+                      type={showPasswords.confirm ? "text" : "password"}
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                      className="bg-black/60 border-purple-500/30 text-white pr-10"
+                      placeholder="Confirm new password"
+                      required
+                      disabled={isChangingPassword}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                    >
+                      {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isChangingPassword}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                {isChangingPassword ? "Changing Password..." : "Change Password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
         {/* Leaderboard */}
         <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl mb-8">
           <CardHeader>
@@ -442,7 +548,7 @@ export default function AccountPage() {
                 <div
                   key={entry.id}
                   className={`flex items-center justify-between p-3 rounded-lg ${
-                    entry.id === userId
+                    entry.id === user?.id
                       ? "bg-purple-600/30 border border-purple-500/50"
                       : "bg-black/40 hover:bg-black/60"
                   } transition-colors`}
