@@ -1,6 +1,8 @@
 "use client"
 import { useState, useEffect } from "react"
-import { ChevronDown, Play, Clock, Calendar } from "lucide-react"
+import type React from "react"
+
+import { ChevronDown, Play, Clock, Calendar, Star } from "lucide-react"
 
 interface Episode {
   id: number
@@ -48,6 +50,193 @@ export default function SeasonEpisodeSelector({
   const [seasons, setSeasons] = useState<Season[]>([])
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false)
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false)
+
+  // Inline styles
+  const containerStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.5rem",
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+  }
+
+  const seasonSelectorStyle: React.CSSProperties = {
+    position: "relative",
+  }
+
+  const seasonButtonStyle: React.CSSProperties = {
+    width: "100%",
+    background: "rgba(0, 0, 0, 0.6)",
+    border: "2px solid rgba(168, 85, 247, 0.3)",
+    borderRadius: "0.75rem",
+    padding: "0.75rem 1rem",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    fontSize: "1rem",
+    fontWeight: "500",
+  }
+
+  const seasonButtonHoverStyle: React.CSSProperties = {
+    ...seasonButtonStyle,
+    borderColor: "rgba(168, 85, 247, 0.6)",
+    background: "rgba(168, 85, 247, 0.1)",
+  }
+
+  const dropdownStyle: React.CSSProperties = {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    marginTop: "0.5rem",
+    background: "rgba(0, 0, 0, 0.95)",
+    border: "2px solid rgba(168, 85, 247, 0.3)",
+    borderRadius: "0.75rem",
+    backdropFilter: "blur(12px)",
+    maxHeight: "15rem",
+    overflowY: "auto",
+    zIndex: 50,
+  }
+
+  const dropdownItemStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.75rem 1rem",
+    textAlign: "left",
+    background: "transparent",
+    border: "none",
+    color: "white",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
+  }
+
+  const dropdownItemHoverStyle: React.CSSProperties = {
+    ...dropdownItemStyle,
+    background: "rgba(168, 85, 247, 0.2)",
+  }
+
+  const episodesSectionStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+  }
+
+  const episodesTitleStyle: React.CSSProperties = {
+    color: "white",
+    fontWeight: "600",
+    fontSize: "1.125rem",
+    margin: 0,
+  }
+
+  const episodesListStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.75rem",
+    maxHeight: "24rem",
+    overflowY: "auto",
+    paddingRight: "0.5rem",
+  }
+
+  const episodeCardStyle: React.CSSProperties = {
+    background: "rgba(0, 0, 0, 0.4)",
+    border: "1px solid rgba(168, 85, 247, 0.2)",
+    borderRadius: "0.75rem",
+    padding: "1rem",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "1rem",
+  }
+
+  const episodeCardHoverStyle: React.CSSProperties = {
+    ...episodeCardStyle,
+    borderColor: "rgba(168, 85, 247, 0.5)",
+    background: "rgba(0, 0, 0, 0.6)",
+    transform: "translateY(-2px)",
+  }
+
+  const episodeCardActiveStyle: React.CSSProperties = {
+    ...episodeCardStyle,
+    borderColor: "rgba(168, 85, 247, 1)",
+    background: "rgba(168, 85, 247, 0.2)",
+  }
+
+  const thumbnailContainerStyle: React.CSSProperties = {
+    position: "relative",
+    flexShrink: 0,
+  }
+
+  const thumbnailStyle: React.CSSProperties = {
+    width: "6rem",
+    height: "3.5rem",
+    objectFit: "cover",
+    borderRadius: "0.5rem",
+    border: "1px solid rgba(168, 85, 247, 0.3)",
+  }
+
+  const playOverlayStyle: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    background: "rgba(0, 0, 0, 0.5)",
+    opacity: 0,
+    transition: "opacity 0.3s ease",
+    borderRadius: "0.5rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  }
+
+  const episodeInfoStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+  }
+
+  const episodeTitleStyle: React.CSSProperties = {
+    color: "white",
+    fontWeight: "500",
+    fontSize: "0.875rem",
+    marginBottom: "0.25rem",
+    display: "-webkit-box",
+    WebkitLineClamp: 1,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  }
+
+  const episodeMetaStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.75rem",
+    fontSize: "0.75rem",
+    color: "#888",
+    marginBottom: "0.5rem",
+  }
+
+  const episodeOverviewStyle: React.CSSProperties = {
+    color: "#ccc",
+    fontSize: "0.75rem",
+    lineHeight: "1.4",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+  }
+
+  const loadingStyle: React.CSSProperties = {
+    textAlign: "center",
+    padding: "2rem 0",
+    color: "#a855f7",
+    fontSize: "1rem",
+  }
+
+  const noEpisodesStyle: React.CSSProperties = {
+    textAlign: "center",
+    padding: "2rem 0",
+    color: "#888",
+    fontSize: "1rem",
+  }
 
   // Load seasons on mount
   useEffect(() => {
@@ -133,31 +322,54 @@ export default function SeasonEpisodeSelector({
   }
 
   return (
-    <div className="space-y-6">
+    <div style={containerStyle}>
       {/* Season Selector */}
-      <div className="relative">
+      <div style={seasonSelectorStyle}>
         <button
           onClick={() => setShowSeasonDropdown(!showSeasonDropdown)}
-          className="w-full bg-black/60 border-2 border-purple-500/30 rounded-xl px-4 py-3 text-white flex items-center justify-between hover:border-purple-500 transition-colors"
+          style={seasonButtonStyle}
+          onMouseEnter={(e) => {
+            Object.assign(e.currentTarget.style, seasonButtonHoverStyle)
+          }}
+          onMouseLeave={(e) => {
+            Object.assign(e.currentTarget.style, seasonButtonStyle)
+          }}
         >
-          <span className="font-medium">
-            {seasons.find((s) => s.season_number === selectedSeason)?.name || `Season ${selectedSeason}`}
-          </span>
-          <ChevronDown className={`w-5 h-5 transition-transform ${showSeasonDropdown ? "rotate-180" : ""}`} />
+          <span>{seasons.find((s) => s.season_number === selectedSeason)?.name || `Season ${selectedSeason}`}</span>
+          <ChevronDown
+            style={{
+              width: "1.25rem",
+              height: "1.25rem",
+              transition: "transform 0.3s ease",
+              transform: showSeasonDropdown ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          />
         </button>
 
         {showSeasonDropdown && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 border-2 border-purple-500/30 rounded-xl backdrop-blur-xl max-h-60 overflow-y-auto z-50">
+          <div style={dropdownStyle}>
             {seasons.map((season) => (
               <button
                 key={season.id}
                 onClick={() => handleSeasonChange(season.season_number)}
-                className={`w-full px-4 py-3 text-left hover:bg-purple-600/20 transition-colors border-b border-purple-500/20 last:border-b-0 ${
-                  selectedSeason === season.season_number ? "bg-purple-600/30 text-purple-300" : "text-white"
-                }`}
+                style={{
+                  ...dropdownItemStyle,
+                  background: selectedSeason === season.season_number ? "rgba(168, 85, 247, 0.3)" : "transparent",
+                  color: selectedSeason === season.season_number ? "#a855f7" : "white",
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedSeason !== season.season_number) {
+                    Object.assign(e.currentTarget.style, dropdownItemHoverStyle)
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedSeason !== season.season_number) {
+                    Object.assign(e.currentTarget.style, dropdownItemStyle)
+                  }
+                }}
               >
-                <div className="font-medium">{season.name}</div>
-                <div className="text-sm text-[#888]">{season.episode_count} episodes</div>
+                <div style={{ fontWeight: "500" }}>{season.name}</div>
+                <div style={{ fontSize: "0.875rem", color: "#888" }}>{season.episode_count} episodes</div>
               </button>
             ))}
           </div>
@@ -165,97 +377,93 @@ export default function SeasonEpisodeSelector({
       </div>
 
       {/* Episodes List */}
-      <div className="space-y-3">
-        <h3 className="text-white font-semibold text-lg">Episodes</h3>
+      <div style={episodesSectionStyle}>
+        <h3 style={episodesTitleStyle}>Episodes</h3>
 
         {isLoadingEpisodes ? (
-          <div className="text-center py-8 text-purple-400 animate-pulse">Loading episodes...</div>
+          <div style={loadingStyle}>Loading episodes...</div>
         ) : episodes.length > 0 ? (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {episodes.map((episode) => (
-              <div
-                key={episode.id}
-                onClick={() => handleEpisodeSelect(episode)}
-                className={`bg-black/40 border border-purple-500/20 rounded-xl p-4 cursor-pointer hover:border-purple-500/50 hover:bg-black/60 transition-all duration-300 group ${
-                  currentEpisode === episode.episode_number ? "border-purple-500 bg-purple-600/20" : ""
-                }`}
-              >
-                <div className="flex items-start space-x-4">
+          <div style={episodesListStyle}>
+            {episodes.map((episode) => {
+              const isActive = currentEpisode === episode.episode_number
+              const cardStyle = isActive ? episodeCardActiveStyle : episodeCardStyle
+
+              return (
+                <div
+                  key={episode.id}
+                  onClick={() => handleEpisodeSelect(episode)}
+                  style={cardStyle}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      Object.assign(e.currentTarget.style, episodeCardHoverStyle)
+                      const overlay = e.currentTarget.querySelector("[data-play-overlay]") as HTMLElement
+                      if (overlay) overlay.style.opacity = "1"
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      Object.assign(e.currentTarget.style, episodeCardStyle)
+                      const overlay = e.currentTarget.querySelector("[data-play-overlay]") as HTMLElement
+                      if (overlay) overlay.style.opacity = "0"
+                    }
+                  }}
+                >
                   {/* Episode Thumbnail */}
-                  <div className="relative flex-shrink-0">
+                  <div style={thumbnailContainerStyle}>
                     <img
                       src={
                         episode.still_path
                           ? `${TMDB_IMAGE_BASE_URL}/w300${episode.still_path}`
-                          : "/placeholder.svg?height=90&width=160"
+                          : "/placeholder.svg?height=56&width=96"
                       }
                       alt={episode.name}
-                      className="w-24 h-14 object-cover rounded-lg border border-purple-500/30"
+                      style={thumbnailStyle}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement
-                        target.src = "/placeholder.svg?height=90&width=160"
+                        target.src = "/placeholder.svg?height=56&width=96"
                       }}
                     />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                      <Play className="w-6 h-6 text-white" />
+                    <div style={playOverlayStyle} data-play-overlay>
+                      <Play style={{ width: "1.5rem", height: "1.5rem", color: "white" }} />
                     </div>
                   </div>
 
                   {/* Episode Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="text-white font-medium text-sm mb-1 line-clamp-1">
-                          {episode.episode_number}. {episode.name}
-                        </h4>
-                        <div className="flex items-center space-x-3 text-xs text-[#888]">
-                          {episode.runtime && (
-                            <span className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {formatRuntime(episode.runtime)}
-                            </span>
-                          )}
-                          {episode.air_date && (
-                            <span className="flex items-center">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {formatDate(episode.air_date)}
-                            </span>
-                          )}
-                          {episode.vote_average > 0 && (
-                            <span className="text-yellow-500">★ {episode.vote_average.toFixed(1)}</span>
-                          )}
-                        </div>
-                      </div>
+                  <div style={episodeInfoStyle}>
+                    <h4 style={episodeTitleStyle}>
+                      {episode.episode_number}. {episode.name}
+                    </h4>
+                    <div style={episodeMetaStyle}>
+                      {episode.runtime && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <Clock style={{ width: "0.75rem", height: "0.75rem" }} />
+                          {formatRuntime(episode.runtime)}
+                        </span>
+                      )}
+                      {episode.air_date && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <Calendar style={{ width: "0.75rem", height: "0.75rem" }} />
+                          {formatDate(episode.air_date)}
+                        </span>
+                      )}
+                      {episode.vote_average > 0 && (
+                        <span style={{ display: "flex", alignItems: "center", gap: "0.25rem", color: "#fbbf24" }}>
+                          <Star style={{ width: "0.75rem", height: "0.75rem" }} />
+                          {episode.vote_average.toFixed(1)}
+                        </span>
+                      )}
                     </div>
 
-                    {episode.overview && (
-                      <p className="text-[#ccc] text-xs line-clamp-2 leading-relaxed">{episode.overview}</p>
-                    )}
+                    {episode.overview && <p style={episodeOverviewStyle}>{episode.overview}</p>}
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
-          <div className="text-center py-8 text-[#888]">No episodes found for this season</div>
+          <div style={noEpisodesStyle}>No episodes found for this season</div>
         )}
       </div>
-
-      <style jsx>{`
-        .line-clamp-1 {
-          display: -webkit-box;
-          -webkit-line-clamp: 1;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
     </div>
   )
 }
