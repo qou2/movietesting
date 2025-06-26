@@ -1,16 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useDatabase } from "@/hooks/useDatabase"
 import { useAuth } from "@/components/auth-guard"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   User,
   Film,
@@ -28,7 +21,6 @@ import {
   LogOut,
   Lock,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 
 interface AccessCode {
   code: string
@@ -56,13 +48,13 @@ interface LeaderboardEntry {
 export default function AccountPage() {
   const { user, logout } = useAuth()
   const { watchHistory, favorites, isLoading } = useDatabase()
-  const { toast } = useToast()
   const [accessCode, setAccessCode] = useState<AccessCode | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [generationError, setGenerationError] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   // Password change state
   const [isChangingPassword, setIsChangingPassword] = useState(false)
@@ -76,6 +68,62 @@ export default function AccountPage() {
     newPassword: "",
     confirmPassword: "",
   })
+
+  // Inline styles
+  const containerStyle: React.CSSProperties = {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
+    color: "#e0e0e0",
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+    padding: "2rem",
+  }
+
+  const cardStyle: React.CSSProperties = {
+    background: "rgba(0, 0, 0, 0.6)",
+    border: "2px solid rgba(168, 85, 247, 0.3)",
+    borderRadius: "1.5rem",
+    backdropFilter: "blur(12px)",
+    marginBottom: "2rem",
+  }
+
+  const headerStyle: React.CSSProperties = {
+    padding: "1.5rem",
+    borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
+  }
+
+  const contentStyle: React.CSSProperties = {
+    padding: "1.5rem",
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+    color: "white",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "0.75rem",
+    border: "none",
+    fontWeight: "500",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "0.75rem",
+    background: "rgba(0, 0, 0, 0.6)",
+    border: "1px solid rgba(168, 85, 247, 0.3)",
+    borderRadius: "0.75rem",
+    color: "white",
+    fontSize: "0.875rem",
+    outline: "none",
+  }
+
+  const showMessage = (type: "success" | "error", text: string) => {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 5000)
+  }
 
   // Calculate user statistics
   useEffect(() => {
@@ -122,11 +170,7 @@ export default function AccountPage() {
 
   const generateAccessCode = async () => {
     if (!user) {
-      toast({
-        title: "Error",
-        description: "User not authenticated",
-        variant: "destructive",
-      })
+      showMessage("error", "User not authenticated")
       return
     }
 
@@ -153,29 +197,18 @@ export default function AccountPage() {
           code: data.code,
           expiresAt: data.expiresAt,
         })
-        toast({
-          title: "Access Code Generated",
-          description: "Your one-time access code has been created successfully.",
-        })
+        showMessage("success", "Your one-time access code has been created successfully.")
       } else {
         const errorMessage = data.error || `Server error: ${response.status}`
         console.error("Access code generation failed:", errorMessage, data.details)
         setGenerationError(errorMessage)
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
-        })
+        showMessage("error", errorMessage)
       }
     } catch (error) {
       console.error("Error generating access code:", error)
       const errorMessage = "Failed to generate access code. Please try again."
       setGenerationError(errorMessage)
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      showMessage("error", errorMessage)
     } finally {
       setIsGenerating(false)
     }
@@ -185,20 +218,12 @@ export default function AccountPage() {
     e.preventDefault()
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords do not match",
-        variant: "destructive",
-      })
+      showMessage("error", "New passwords do not match")
       return
     }
 
     if (passwordData.newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "New password must be at least 6 characters long",
-        variant: "destructive",
-      })
+      showMessage("error", "New password must be at least 6 characters long")
       return
     }
 
@@ -216,28 +241,17 @@ export default function AccountPage() {
       const data = await response.json()
 
       if (data.success) {
-        toast({
-          title: "Success",
-          description: "Password changed successfully!",
-        })
+        showMessage("success", "Password changed successfully!")
         setPasswordData({
           currentPassword: "",
           newPassword: "",
           confirmPassword: "",
         })
       } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to change password",
-          variant: "destructive",
-        })
+        showMessage("error", data.error || "Failed to change password")
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to change password",
-        variant: "destructive",
-      })
+      showMessage("error", "Failed to change password")
     } finally {
       setIsChangingPassword(false)
     }
@@ -249,17 +263,10 @@ export default function AccountPage() {
     try {
       await navigator.clipboard.writeText(accessCode.code)
       setCopied(true)
-      toast({
-        title: "Copied!",
-        description: "Access code copied to clipboard.",
-      })
+      showMessage("success", "Access code copied to clipboard.")
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to copy to clipboard.",
-        variant: "destructive",
-      })
+      showMessage("error", "Failed to copy to clipboard.")
     }
   }
 
@@ -277,185 +284,325 @@ export default function AccountPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] flex items-center justify-center">
-        <div className="text-purple-400 text-lg animate-pulse">Loading account...</div>
+      <div style={containerStyle}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "100vh",
+            color: "#a855f7",
+            fontSize: "1.125rem",
+          }}
+        >
+          Loading account...
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0a] via-[#1a0a2e] to-[#0a0a0a] text-[#e0e0e0] p-8">
-      {/* Grain texture overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-[-1]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div style={containerStyle}>
+      <div style={{ maxWidth: "96rem", margin: "0 auto" }}>
+        {/* Message Display */}
+        {message && (
+          <div
+            style={{
+              position: "fixed",
+              top: "2rem",
+              right: "2rem",
+              padding: "1rem 1.5rem",
+              borderRadius: "0.75rem",
+              background: message.type === "success" ? "rgba(34, 197, 94, 0.9)" : "rgba(239, 68, 68, 0.9)",
+              color: "white",
+              zIndex: 1000,
+              animation: "slideIn 0.3s ease-out",
+            }}
+          >
+            {message.text}
+          </div>
+        )}
 
-      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center mr-4">
-              <User className="w-8 h-8 text-white" />
+        <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
+            <div
+              style={{
+                width: "4rem",
+                height: "4rem",
+                background: "linear-gradient(135deg, #7c3aed, #ec4899)",
+                borderRadius: "1rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: "1rem",
+              }}
+            >
+              <User style={{ width: "2rem", height: "2rem", color: "white" }} />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-600 bg-clip-text text-transparent">
+              <h1
+                style={{
+                  fontSize: "2.25rem",
+                  fontWeight: "bold",
+                  background: "linear-gradient(135deg, #a855f7, #ec4899, #a855f7)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
                 Welcome back, {user?.username}!
               </h1>
-              {getUserRank() && <p className="text-[#888] text-lg">Ranked #{getUserRank()} on the leaderboard</p>}
+              {getUserRank() && (
+                <p style={{ color: "#888", fontSize: "1.125rem" }}>Ranked #{getUserRank()} on the leaderboard</p>
+              )}
             </div>
           </div>
-          <p className="text-[#888] text-lg">Manage your movie time experience</p>
+          <p style={{ color: "#888", fontSize: "1.125rem" }}>Manage your movie time experience</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
+            gap: "2rem",
+            marginBottom: "2rem",
+          }}
+        >
           {/* User Information */}
-          <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center text-white">
-                <User className="w-5 h-5 mr-2 text-purple-400" />
+          <div style={cardStyle}>
+            <div style={headerStyle}>
+              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+                <User style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#a855f7" }} />
                 Account Information
-              </CardTitle>
-              <CardDescription className="text-[#888]">Your account details and settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm text-[#888] block mb-2">Username</label>
-                <div className="bg-purple-600/20 text-purple-300 px-3 py-2 rounded-lg text-sm">{user?.username}</div>
-              </div>
-
-              <div>
-                <label className="text-sm text-[#888] block mb-1">User ID</label>
-                <div className="flex items-center space-x-2">
-                  <code className="bg-purple-600/20 text-purple-300 px-3 py-2 rounded-lg text-sm font-mono flex-1 break-all">
-                    {user?.id}
-                  </code>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (user?.id) {
-                        navigator.clipboard.writeText(user.id)
-                        toast({ title: "Copied!", description: "User ID copied to clipboard." })
-                      }
-                    }}
-                    className="border-purple-500/30 hover:bg-purple-600/20"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
+              </h3>
+              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
+                Your account details and settings
+              </p>
+            </div>
+            <div style={contentStyle}>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: "0.875rem", color: "#888", display: "block", marginBottom: "0.5rem" }}>
+                  Username
+                </label>
+                <div
+                  style={{
+                    background: "rgba(168, 85, 247, 0.2)",
+                    color: "#a855f7",
+                    padding: "0.75rem",
+                    borderRadius: "0.5rem",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {user?.username}
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm text-[#888] block mb-1">Member Since</label>
-                <div className="flex items-center text-white">
-                  <Calendar className="w-4 h-4 mr-2 text-purple-400" />
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: "0.875rem", color: "#888", display: "block", marginBottom: "0.25rem" }}>
+                  User ID
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <code
+                    style={{
+                      background: "rgba(168, 85, 247, 0.2)",
+                      color: "#a855f7",
+                      padding: "0.75rem",
+                      borderRadius: "0.5rem",
+                      fontSize: "0.875rem",
+                      fontFamily: "monospace",
+                      flex: 1,
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {user?.id}
+                  </code>
+                  <button
+                    onClick={() => {
+                      if (user?.id) {
+                        navigator.clipboard.writeText(user.id)
+                        showMessage("success", "User ID copied to clipboard.")
+                      }
+                    }}
+                    style={{
+                      ...buttonStyle,
+                      background: "rgba(168, 85, 247, 0.2)",
+                      border: "1px solid rgba(168, 85, 247, 0.3)",
+                      color: "#a855f7",
+                      padding: "0.5rem",
+                    }}
+                  >
+                    <Copy style={{ width: "1rem", height: "1rem" }} />
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={{ fontSize: "0.875rem", color: "#888", display: "block", marginBottom: "0.25rem" }}>
+                  Member Since
+                </label>
+                <div style={{ display: "flex", alignItems: "center", color: "white" }}>
+                  <Calendar style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#a855f7" }} />
                   {userStats?.joinDate || "Today"}
                 </div>
               </div>
 
-              <Separator className="bg-purple-500/20" />
+              <div style={{ height: "1px", background: "rgba(168, 85, 247, 0.2)", margin: "1rem 0" }} />
 
               <div>
-                <Button
+                <button
                   onClick={logout}
-                  variant="outline"
-                  className="w-full border-red-500/30 hover:bg-red-600/20 text-red-300"
+                  style={{
+                    ...buttonStyle,
+                    background: "rgba(239, 68, 68, 0.2)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#ef4444",
+                    width: "100%",
+                    justifyContent: "center",
+                  }}
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut style={{ width: "1rem", height: "1rem" }} />
                   Sign Out
-                </Button>
+                </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Statistics */}
-          <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center text-white">
-                <BarChart3 className="w-5 h-5 mr-2 text-purple-400" />
+          <div style={cardStyle}>
+            <div style={headerStyle}>
+              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+                <BarChart3 style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#a855f7" }} />
                 Watch Statistics
-              </CardTitle>
-              <CardDescription className="text-[#888]">Your viewing activity overview</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </h3>
+              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
+                Your viewing activity overview
+              </p>
+            </div>
+            <div style={contentStyle}>
               {userStats && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-purple-600/20 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-300">{userStats.totalWatched}</div>
-                      <div className="text-xs text-[#888]">Total Watched</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "0.75rem",
+                        background: "rgba(168, 85, 247, 0.2)",
+                        borderRadius: "0.5rem",
+                      }}
+                    >
+                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#a855f7" }}>
+                        {userStats.totalWatched}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#888" }}>Total Watched</div>
                     </div>
-                    <div className="text-center p-3 bg-pink-600/20 rounded-lg">
-                      <div className="text-2xl font-bold text-pink-300">{userStats.totalFavorites}</div>
-                      <div className="text-xs text-[#888]">Favorites</div>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "0.75rem",
+                        background: "rgba(236, 72, 153, 0.2)",
+                        borderRadius: "0.5rem",
+                      }}
+                    >
+                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#ec4899" }}>
+                        {userStats.totalFavorites}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#888" }}>Favorites</div>
                     </div>
                   </div>
 
-                  <Separator className="bg-purple-500/20" />
+                  <div style={{ height: "1px", background: "rgba(168, 85, 247, 0.2)", margin: "1rem 0" }} />
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Film className="w-4 h-4 mr-2 text-purple-400" />
-                        <span className="text-white">Movies</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <Film style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#a855f7" }} />
+                        <span style={{ color: "white" }}>Movies</span>
                       </div>
-                      <Badge variant="outline" className="border-purple-500/30 text-purple-300">
+                      <span
+                        style={{
+                          background: "rgba(168, 85, 247, 0.2)",
+                          color: "#a855f7",
+                          padding: "0.25rem 0.5rem",
+                          borderRadius: "0.25rem",
+                          fontSize: "0.875rem",
+                        }}
+                      >
                         {userStats.moviesWatched}
-                      </Badge>
+                      </span>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Tv className="w-4 h-4 mr-2 text-blue-400" />
-                        <span className="text-white">TV Episodes</span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <Tv style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#3b82f6" }} />
+                        <span style={{ color: "white" }}>TV Episodes</span>
                       </div>
-                      <Badge variant="outline" className="border-blue-500/30 text-blue-300">
+                      <span
+                        style={{
+                          background: "rgba(59, 130, 246, 0.2)",
+                          color: "#3b82f6",
+                          padding: "0.25rem 0.5rem",
+                          borderRadius: "0.25rem",
+                          fontSize: "0.875rem",
+                        }}
+                      >
                         {userStats.tvShowsWatched}
-                      </Badge>
+                      </span>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-2 text-green-400" />
-                        <span className="text-white">Watch Time</span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center" }}>
+                        <Clock style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#10b981" }} />
+                        <span style={{ color: "white" }}>Watch Time</span>
                       </div>
-                      <Badge variant="outline" className="border-green-500/30 text-green-300">
+                      <span
+                        style={{
+                          background: "rgba(16, 185, 129, 0.2)",
+                          color: "#10b981",
+                          padding: "0.25rem 0.5rem",
+                          borderRadius: "0.25rem",
+                          fontSize: "0.875rem",
+                        }}
+                      >
                         ~{userStats.watchTimeHours}h
-                      </Badge>
+                      </span>
                     </div>
                   </div>
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Password Change */}
-        <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center text-white">
-              <Lock className="w-5 h-5 mr-2 text-purple-400" />
+        <div style={cardStyle}>
+          <div style={headerStyle}>
+            <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+              <Lock style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#a855f7" }} />
               Change Password
-            </CardTitle>
-            <CardDescription className="text-[#888]">Update your account password</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password" className="text-white">
+            </h3>
+            <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>Update your account password</p>
+          </div>
+          <div style={contentStyle}>
+            <form onSubmit={handlePasswordChange}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: "1rem",
+                  marginBottom: "1rem",
+                }}
+              >
+                <div>
+                  <label style={{ fontSize: "0.875rem", color: "white", display: "block", marginBottom: "0.5rem" }}>
                     Current Password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="current-password"
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <input
                       type={showPasswords.current ? "text" : "password"}
                       value={passwordData.currentPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                      className="bg-black/60 border-purple-500/30 text-white pr-10"
+                      style={{ ...inputStyle, paddingRight: "2.5rem" }}
                       placeholder="Enter current password"
                       required
                       disabled={isChangingPassword}
@@ -463,24 +610,36 @@ export default function AccountPage() {
                     <button
                       type="button"
                       onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                      style={{
+                        position: "absolute",
+                        right: "0.75rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "#888",
+                        cursor: "pointer",
+                      }}
                     >
-                      {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPasswords.current ? (
+                        <EyeOff style={{ width: "1rem", height: "1rem" }} />
+                      ) : (
+                        <Eye style={{ width: "1rem", height: "1rem" }} />
+                      )}
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="new-password" className="text-white">
+                <div>
+                  <label style={{ fontSize: "0.875rem", color: "white", display: "block", marginBottom: "0.5rem" }}>
                     New Password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="new-password"
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <input
                       type={showPasswords.new ? "text" : "password"}
                       value={passwordData.newPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                      className="bg-black/60 border-purple-500/30 text-white pr-10"
+                      style={{ ...inputStyle, paddingRight: "2.5rem" }}
                       placeholder="Enter new password"
                       required
                       disabled={isChangingPassword}
@@ -489,24 +648,36 @@ export default function AccountPage() {
                     <button
                       type="button"
                       onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                      style={{
+                        position: "absolute",
+                        right: "0.75rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "#888",
+                        cursor: "pointer",
+                      }}
                     >
-                      {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPasswords.new ? (
+                        <EyeOff style={{ width: "1rem", height: "1rem" }} />
+                      ) : (
+                        <Eye style={{ width: "1rem", height: "1rem" }} />
+                      )}
                     </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password" className="text-white">
+                <div>
+                  <label style={{ fontSize: "0.875rem", color: "white", display: "block", marginBottom: "0.5rem" }}>
                     Confirm Password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="confirm-password"
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <input
                       type={showPasswords.confirm ? "text" : "password"}
                       value={passwordData.confirmPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                      className="bg-black/60 border-purple-500/30 text-white pr-10"
+                      style={{ ...inputStyle, paddingRight: "2.5rem" }}
                       placeholder="Confirm new password"
                       required
                       disabled={isChangingPassword}
@@ -514,175 +685,337 @@ export default function AccountPage() {
                     <button
                       type="button"
                       onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#888] hover:text-white"
+                      style={{
+                        position: "absolute",
+                        right: "0.75rem",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "#888",
+                        cursor: "pointer",
+                      }}
                     >
-                      {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPasswords.confirm ? (
+                        <EyeOff style={{ width: "1rem", height: "1rem" }} />
+                      ) : (
+                        <Eye style={{ width: "1rem", height: "1rem" }} />
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
 
-              <Button
+              <button
                 type="submit"
                 disabled={isChangingPassword}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                style={{
+                  ...buttonStyle,
+                  opacity: isChangingPassword ? 0.5 : 1,
+                  cursor: isChangingPassword ? "not-allowed" : "pointer",
+                }}
               >
                 {isChangingPassword ? "Changing Password..." : "Change Password"}
-              </Button>
+              </button>
             </form>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Leaderboard */}
-        <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center text-white">
-              <Trophy className="w-5 h-5 mr-2 text-yellow-400" />
+        <div style={cardStyle}>
+          <div style={headerStyle}>
+            <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+              <Trophy style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#eab308" }} />
               Leaderboard
-            </CardTitle>
-            <CardDescription className="text-[#888]">Top users by watch time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            </h3>
+            <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>Top users by watch time</p>
+          </div>
+          <div style={contentStyle}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+                maxHeight: "24rem",
+                overflowY: "auto",
+              }}
+            >
               {leaderboard.slice(0, 10).map((entry, index) => (
                 <div
                   key={entry.id}
-                  className={`flex items-center justify-between p-3 rounded-lg ${
-                    entry.id === user?.id
-                      ? "bg-purple-600/30 border border-purple-500/50"
-                      : "bg-black/40 hover:bg-black/60"
-                  } transition-colors`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "0.75rem",
+                    borderRadius: "0.5rem",
+                    background: entry.id === user?.id ? "rgba(168, 85, 247, 0.3)" : "rgba(0, 0, 0, 0.4)",
+                    border: entry.id === user?.id ? "1px solid rgba(168, 85, 247, 0.5)" : "none",
+                    transition: "background 0.3s ease",
+                  }}
                 >
-                  <div className="flex items-center space-x-3">
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                        index === 0
-                          ? "bg-yellow-500 text-black"
-                          : index === 1
-                            ? "bg-gray-400 text-black"
-                            : index === 2
-                              ? "bg-amber-600 text-white"
-                              : "bg-purple-600/50 text-white"
-                      }`}
+                      style={{
+                        width: "2rem",
+                        height: "2rem",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: "bold",
+                        fontSize: "0.875rem",
+                        background:
+                          index === 0
+                            ? "#eab308"
+                            : index === 1
+                              ? "#9ca3af"
+                              : index === 2
+                                ? "#d97706"
+                                : "rgba(168, 85, 247, 0.5)",
+                        color: index < 3 ? "black" : "white",
+                      }}
                     >
                       {index + 1}
                     </div>
                     <div>
-                      <div className="text-white font-medium">{entry.username}</div>
-                      <div className="text-xs text-[#888]">{entry.totalWatched} items watched</div>
+                      <div style={{ color: "white", fontWeight: "500" }}>{entry.username}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#888" }}>{entry.totalWatched} items watched</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-white font-bold">{entry.totalWatchHours}h</div>
-                    <div className="text-xs text-[#888]">watch time</div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ color: "white", fontWeight: "bold" }}>{entry.totalWatchHours}h</div>
+                    <div style={{ fontSize: "0.75rem", color: "#888" }}>watch time</div>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Access Code Generator */}
-        <Card className="bg-black/60 border-2 border-purple-500/30 backdrop-blur-xl">
-          <CardHeader>
-            <CardTitle className="flex items-center text-white">
-              <Key className="w-5 h-5 mr-2 text-purple-400" />
+        <div style={cardStyle}>
+          <div style={headerStyle}>
+            <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
+              <Key style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#a855f7" }} />
               One-Time Access Code
-            </CardTitle>
-            <CardDescription className="text-[#888]">
+            </h3>
+            <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
               Generate a temporary access code to share with others. Each code can only be used once and expires in 24
               hours.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
+            </p>
+          </div>
+          <div style={contentStyle}>
             {generationError && (
-              <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+              <div
+                style={{
+                  padding: "0.75rem",
+                  background: "rgba(239, 68, 68, 0.2)",
+                  border: "1px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: "0.75rem",
+                  color: "#ef4444",
+                  fontSize: "0.875rem",
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "1.5rem",
+                }}
+              >
+                <AlertCircle style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", flexShrink: 0 }} />
                 {generationError}
               </div>
             )}
 
             {!accessCode ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Key className="w-8 h-8 text-purple-400" />
+              <div style={{ textAlign: "center", padding: "2rem 0" }}>
+                <div
+                  style={{
+                    width: "4rem",
+                    height: "4rem",
+                    background: "rgba(168, 85, 247, 0.2)",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    margin: "0 auto 1rem auto",
+                  }}
+                >
+                  <Key style={{ width: "2rem", height: "2rem", color: "#a855f7" }} />
                 </div>
-                <p className="text-[#888] mb-4">No active access code</p>
-                <Button
+                <p style={{ color: "#888", marginBottom: "1rem" }}>No active access code</p>
+                <button
                   onClick={generateAccessCode}
                   disabled={isGenerating}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  style={{
+                    ...buttonStyle,
+                    opacity: isGenerating ? 0.5 : 1,
+                    cursor: isGenerating ? "not-allowed" : "pointer",
+                  }}
                 >
                   {isGenerating ? "Generating..." : "Generate Access Code"}
-                </Button>
+                </button>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="p-6 bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl border border-purple-500/30">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Active Access Code</h3>
-                    <Badge className="bg-green-600/20 text-green-300 border-green-500/30">Active</Badge>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <div
+                  style={{
+                    padding: "1.5rem",
+                    background: "linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2))",
+                    borderRadius: "0.75rem",
+                    border: "1px solid rgba(168, 85, 247, 0.3)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    <h4 style={{ fontSize: "1.125rem", fontWeight: "600", color: "white" }}>Active Access Code</h4>
+                    <span
+                      style={{
+                        background: "rgba(34, 197, 94, 0.2)",
+                        color: "#22c55e",
+                        padding: "0.25rem 0.5rem",
+                        borderRadius: "0.25rem",
+                        fontSize: "0.75rem",
+                        border: "1px solid rgba(34, 197, 94, 0.3)",
+                      }}
+                    >
+                      Active
+                    </span>
                   </div>
 
-                  <div className="flex items-center space-x-3 mb-4">
-                    <code className="bg-black/40 text-purple-300 px-4 py-3 rounded-lg text-xl font-mono tracking-wider flex-1 text-center border border-purple-500/30">
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
+                    <code
+                      style={{
+                        background: "rgba(0, 0, 0, 0.4)",
+                        color: "#a855f7",
+                        padding: "0.75rem 1rem",
+                        borderRadius: "0.5rem",
+                        fontSize: "1.25rem",
+                        fontFamily: "monospace",
+                        letterSpacing: "0.1em",
+                        flex: 1,
+                        textAlign: "center",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                      }}
+                    >
                       {accessCode.code}
                     </code>
-                    <Button
+                    <button
                       onClick={copyToClipboard}
-                      variant="outline"
-                      className="border-purple-500/30 hover:bg-purple-600/20"
+                      style={{
+                        ...buttonStyle,
+                        background: "rgba(168, 85, 247, 0.2)",
+                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                        color: "#a855f7",
+                        padding: "0.75rem",
+                      }}
                     >
-                      {copied ? <CheckCircle className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                    </Button>
+                      {copied ? (
+                        <CheckCircle style={{ width: "1rem", height: "1rem", color: "#22c55e" }} />
+                      ) : (
+                        <Copy style={{ width: "1rem", height: "1rem" }} />
+                      )}
+                    </button>
                   </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#888]">Expires in: {formatExpiryTime(accessCode.expiresAt)}</span>
-                    <Button
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    <span style={{ color: "#888" }}>Expires in: {formatExpiryTime(accessCode.expiresAt)}</span>
+                    <button
                       onClick={generateAccessCode}
-                      variant="ghost"
-                      size="sm"
                       disabled={isGenerating}
-                      className="text-purple-400 hover:text-purple-300 hover:bg-purple-600/20"
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#a855f7",
+                        cursor: "pointer",
+                        fontSize: "0.875rem",
+                        opacity: isGenerating ? 0.5 : 1,
+                      }}
                     >
                       Generate New
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
-                <div className="p-4 bg-yellow-600/10 border border-yellow-500/30 rounded-lg">
-                  <div className="flex items-start space-x-2">
-                    <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-black text-xs font-bold">!</span>
+                <div
+                  style={{
+                    padding: "1rem",
+                    background: "rgba(245, 158, 11, 0.1)",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                    borderRadius: "0.5rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                    <div
+                      style={{
+                        width: "1.25rem",
+                        height: "1.25rem",
+                        background: "#f59e0b",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        marginTop: "0.125rem",
+                      }}
+                    >
+                      <span style={{ color: "black", fontSize: "0.75rem", fontWeight: "bold" }}>!</span>
                     </div>
-                    <div className="text-sm text-yellow-200">
-                      <p className="font-medium mb-1">Important:</p>
-                      <ul className="space-y-1 text-yellow-300/80">
-                        <li>• This code can only be used once by others</li>
-                        <li>• It will expire in 24 hours</li>
-                        <li>• Generating a new code will deactivate the current one</li>
-                        <li>• Share this code securely with trusted users only</li>
+                    <div style={{ fontSize: "0.875rem", color: "#fbbf24" }}>
+                      <p style={{ fontWeight: "500", marginBottom: "0.25rem" }}>Important:</p>
+                      <ul style={{ margin: 0, paddingLeft: "1rem", color: "rgba(251, 191, 36, 0.8)" }}>
+                        <li>This code can only be used once by others</li>
+                        <li>It will expire in 24 hours</li>
+                        <li>Generating a new code will deactivate the current one</li>
+                        <li>Share this code securely with trusted users only</li>
                       </ul>
                     </div>
                   </div>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Navigation */}
-        <div className="mt-12 text-center">
-          <Button
+        <div style={{ marginTop: "3rem", textAlign: "center" }}>
+          <button
             onClick={() => (window.location.href = "/")}
-            variant="outline"
-            className="border-purple-500/30 hover:bg-purple-600/20 text-purple-300"
+            style={{
+              ...buttonStyle,
+              background: "rgba(168, 85, 247, 0.2)",
+              border: "1px solid rgba(168, 85, 247, 0.3)",
+              color: "#a855f7",
+            }}
           >
             Back to Movie Time
-          </Button>
+          </button>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   )
 }
