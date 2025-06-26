@@ -22,7 +22,6 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // Login
   const [loginData, setLoginData] = useState({
     username: "",
     password: "",
