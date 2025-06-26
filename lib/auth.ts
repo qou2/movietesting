@@ -95,8 +95,15 @@ export async function authenticateUser(username: string, password: string): Prom
 
 export async function createUser(username: string, password: string, accessCode: string): Promise<AuthResult> {
   try {
-    console.log("Starting user creation for:", username)
-    console.log("Access code provided:", accessCode ? "[PROVIDED]" : "[MISSING]")
+    console.log("=== CREATE USER FUNCTION STARTED ===")
+    console.log("Username:", username)
+    console.log("Access code received:", `"${accessCode}"`)
+
+    const masterPassword = process.env.MOVIE_APP_PASSWORD
+    console.log("Master password from env:", masterPassword ? `"${masterPassword}"` : "NOT SET")
+    console.log("Access code matches master?", accessCode === masterPassword)
+    console.log("Access code length:", accessCode.length)
+    console.log("Master password length:", masterPassword?.length || 0)
 
     // Check Supabase connection
     if (!supabase) {
@@ -105,15 +112,12 @@ export async function createUser(username: string, password: string, accessCode:
     }
 
     // Check if it's the master password first
-    const masterPassword = process.env.MOVIE_APP_PASSWORD
-    console.log("Master password configured:", masterPassword ? "YES" : "NO")
-
     if (masterPassword && accessCode === masterPassword) {
-      console.log("Using master password for registration")
+      console.log("✅ Using master password for registration")
       // Skip access code verification for master password
     } else {
+      console.log("❌ Master password check failed, checking database...")
       // Verify access code from database
-      console.log("Verifying access code from database...")
       const { data: codeData, error: codeError } = await supabase
         .from("access_codes")
         .select("*")
@@ -204,7 +208,7 @@ export async function createUser(username: string, password: string, accessCode:
       }
     }
 
-    console.log("User created successfully")
+    console.log("✅ User created successfully")
 
     return {
       success: true,
