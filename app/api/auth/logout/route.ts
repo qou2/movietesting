@@ -6,6 +6,7 @@ export async function POST() {
     const cookieStore = cookies()
     cookieStore.delete("auth-token")
 
+    
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Logout error:", error)
