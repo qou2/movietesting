@@ -73,6 +73,9 @@ export default function EnhancedMovieApp() {
   const searchTimeoutRef = useRef<NodeJS.Timeout>()
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
+  const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null)
+  const [userLoading, setUserLoading] = useState(true)
+
   const genres = [
     { id: 28, name: "Action" },
     { id: 12, name: "Adventure" },
@@ -280,6 +283,24 @@ export default function EnhancedMovieApp() {
       loadRecommendations(watchHistory)
     }
   }, [watchHistory, isLoading])
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch("/api/auth/me")
+        if (response.ok) {
+          const userData = await response.json()
+          setCurrentUser(userData)
+        }
+      } catch (error) {
+        console.error("Failed to fetch user:", error)
+      } finally {
+        setUserLoading(false)
+      }
+    }
+
+    fetchCurrentUser()
+  }, [])
 
   const loadTrendingContent = async () => {
     try {
@@ -523,9 +544,9 @@ export default function EnhancedMovieApp() {
           year: parseYear(show.first_air_date),
           tmdbId: show.id,
           poster: show.poster_path ? `${TMDB_IMAGE_BASE_URL}/w500${show.poster_path}` : undefined,
-          backdrop: show.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${show.backdrop_path}` : undefined,
-          overview: show.overview,
-          rating: show.vote_average,
+          backdrop: movie.backdrop_path ? `${TMDB_IMAGE_BASE_URL}/w1280${movie.backdrop_path}` : undefined,
+          overview: movie.overview,
+          rating: movie.vote_average,
           releaseDate: show.first_air_date,
           mediaType: "tv" as const,
         }))
@@ -879,7 +900,16 @@ export default function EnhancedMovieApp() {
             <h1 style={titleStyle}>movie time</h1>
           </div>
           <p style={{ color: "#888", fontSize: "1.125rem", fontWeight: "normal", marginBottom: "0.5rem" }}>
-            powered by videasy • unlimited streaming
+            {userLoading ? (
+              "loading..."
+            ) : currentUser ? (
+              <>
+                welcome back, <span style={{ color: "#a855f7", fontWeight: "600" }}>{currentUser.username}</span> •
+                unlimited streaming
+              </>
+            ) : (
+              "powered by videasy • unlimited streaming"
+            )}
           </p>
           <div style={{ opacity: 0.6, transition: "opacity 0.3s ease" }}>
             <a
