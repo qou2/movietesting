@@ -4,72 +4,115 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
+    console.log("📊 Fetching admin stats...")
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get user stats
-    const { data: users, error: usersError } = await supabase.from("user_profiles").select("*")
+    // Get all data in parallel
+    const [usersResult, codesResult, watchHistoryResult, favoritesResult] = await Promise.allSettled([
+      supabase.from("user_profiles").select("id, last_active, created_at"),
+      supabase.from("access_codes").select("id, is_used, expires_at, is_active, admin_action, used_at"),
+      supabase.from("watch_history").select("id, media_type, runtime, user_id"),
+      supabase.from("favorites").select("id, user_id"),
+    ])
 
-    if (usersError) throw usersError
+    // Process users
+    const users = usersResult.status === "fulfilled" ? usersResult.value.data || [] : []
+    const totalUsers = users.length
 
-    // Get access codes stats
-    const { data: accessCodes, error: codesError } = await supabase.from("access_codes").select("*")
+    // Calculate active users (active in last 7 days)
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const activeUsers = users.filter((user) => {
+      try {
+        return new Date(user.last_active) > weekAgo
+      } catch {
+        return false
+      }
+    }).length
 
-    if (codesError) throw codesError
+    // Process access codes
+    const accessCodes = codesResult.status === "fulfilled" ? codesResult.value.data || [] : []
+    const totalAccessCodes = accessCodes.length
 
-    // Get watch history stats
-    const { data: watchHistory, error: watchError } = await supabase.from("watch_history").select("*")
+    let activeAccessCodes = 0
+    let usedAccessCodes = 0
+    let expiredAccessCodes = 0
+    let revokedAccessCodes = 0
 
-    if (watchError) throw watchError
+    const now = new Date()
+    accessCodes.forEach((code) => {
+      if (!code.is_active || code.admin_action) {
+        revokedAccessCodes++
+      } else if (code.is_used || code.used_at) {
+        usedAccessCodes++
+      } else if (new Date(code.expires_at) < now) {
+        expiredAccessCodes++
+      } else {
+        activeAccessCodes++
+      }
+    })
 
-    // Get favorites stats
-    const { data: favorites, error: favoritesError } = await supabase.from("favorites").select("*")
+    // Process watch history
+    const watchHistory = watchHistoryResult.status === "fulfilled" ? watchHistoryResult.value.data || [] : []
+    const totalMoviesWatched = watchHistory.filter((item) => item.media_type === "movie").length
+    const totalTvWatched = watchHistory.filter((item) => item.media_type === "tv").length
 
-    if (favoritesError) throw favoritesError
-
-    // Calculate stats
-    const totalUsers = users?.length || 0
-    const activeUsers =
-      users?.filter((user) => {
-        const lastActive = new Date(user.last_active)
-        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        return lastActive > weekAgo
-      }).length || 0
-
-    const totalAccessCodes = accessCodes?.length || 0
-    const activeAccessCodes =
-      accessCodes?.filter((code) => !code.is_used && new Date(code.expires_at) > new Date()).length || 0
-
-    const totalMoviesWatched = watchHistory?.filter((item) => item.media_type === "movie").length || 0
-    const totalTvWatched = watchHistory?.filter((item) => item.media_type === "tv").length || 0
-
-    // Estimate total watch time (rough calculation)
+    // Calculate total watch time (rough estimation)
     const totalWatchTime = Math.round(
-      (watchHistory?.reduce((total, item) => {
-        return total + (item.runtime || (item.media_type === "movie" ? 120 : 45))
-      }, 0) || 0) / 60,
+      watchHistory.reduce((total, item) => {
+        const runtime = item.runtime || (item.media_type === "movie" ? 120 : 45)
+        return total + runtime
+      }, 0) / 60,
     )
 
-    const totalFavorites = favorites?.length || 0
+    // Process favorites
+    const favorites = favoritesResult.status === "fulfilled" ? favoritesResult.value.data || [] : []
+    const totalFavorites = favorites.length
 
     const stats = {
       totalUsers,
       activeUsers,
       totalAccessCodes,
       activeAccessCodes,
+      usedAccessCodes,
+      expiredAccessCodes,
+      revokedAccessCodes,
       totalWatchTime,
       totalMoviesWatched,
       totalTvWatched,
       totalFavorites,
     }
 
-    return NextResponse.json({
-      success: true,
-      data: stats,
-    })
+    console.log("✅ Admin stats calculated:", stats)
+
+    return NextResponse.json(
+      {
+        success: true,
+        stats,
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
+    )
   } catch (error) {
-    console.error("Admin stats error:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch admin stats" }, { status: 500 })
+    console.error("❌ Admin stats error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch admin stats",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
