@@ -16,7 +16,7 @@ export async function GET() {
     // Get all users with their basic information
     const { data: users, error } = await supabase
       .from("user_profiles")
-      .select("id, username, email, created_at, last_active")
+      .select("id, username, created_at, last_active")
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -49,7 +49,6 @@ export async function GET() {
         return {
           id: user.id,
           username: user.username,
-          email: user.email,
           joinDate: user.created_at,
           lastActive: user.last_active,
           totalWatched: watchCount || 0,
