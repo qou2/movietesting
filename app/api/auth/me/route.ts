@@ -1,7 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import jwt from "jsonwebtoken"
 import { supabase } from "@/lib/supabase"
+
+// Force dynamic rendering for this API route
+export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,8 +22,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const cookieStore = cookies()
-    const token = cookieStore.get("auth-token")?.value
+    // Get token from cookies using the request object
+    const token = request.cookies.get("auth-token")?.value
 
     if (!token) {
       console.log("No auth token found in cookies")
