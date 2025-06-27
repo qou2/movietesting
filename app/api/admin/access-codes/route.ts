@@ -13,22 +13,10 @@ export async function GET() {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get all access codes with creator information
+    // Get all access codes first
     const { data: accessCodes, error } = await supabase
       .from("access_codes")
-      .select(`
-        id,
-        code,
-        created_by,
-        created_at,
-        expires_at,
-        used_by,
-        used_at,
-        is_active,
-        is_used,
-        admin_action,
-        user_profiles!access_codes_created_by_fkey(username)
-      `)
+      .select("*")
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -51,12 +39,21 @@ export async function GET() {
       })
     }
 
+    // Get all unique user IDs from access codes
+    const userIds = [...new Set(accessCodes.map((code) => code.created_by).filter(Boolean))]
+
+    // Get usernames for these user IDs
+    const { data: users } = await supabase.from("user_profiles").select("id, username").in("id", userIds)
+
+    // Create a map of user ID to username
+    const userMap = new Map(users?.map((user) => [user.id, user.username]) || [])
+
     // Transform the data for the frontend
     const transformedCodes = accessCodes.map((code: any) => ({
       id: code.id,
       code: code.code,
       created_by: code.created_by,
-      createdBy: code.user_profiles?.username || "Unknown User",
+      createdBy: userMap.get(code.created_by) || "Unknown User",
       created_at: code.created_at,
       expires_at: code.expires_at,
       used_by: code.used_by,
