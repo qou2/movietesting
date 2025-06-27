@@ -19,7 +19,7 @@ import {
 import { toast } from "@/hooks/use-toast"
 import {
   Shield,
-  UsersIcon,
+  Users,
   Key,
   Trash2,
   RefreshCw,
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
     toast({
       title: type === "success" ? "Success" : "Error",
       description: text,
-      variant: type === "success" ? undefined : "destructive",
+      variant: type === "success" ? "default" : "destructive",
     })
   }
 
@@ -278,15 +278,15 @@ export default function AdminDashboard() {
     const expiresAt = new Date(accessCode.expires_at)
 
     if (!accessCode.is_active || accessCode.admin_action) {
-      return { status: "Revoked", variant: "secondary" as const, color: "text-red-400" }
+      return { status: "Revoked", variant: "secondary" as const }
     }
     if (accessCode.is_used || accessCode.used_at) {
-      return { status: "Used", variant: "outline" as const, color: "text-blue-400" }
+      return { status: "Used", variant: "outline" as const }
     }
     if (expiresAt < now) {
-      return { status: "Expired", variant: "destructive" as const, color: "text-yellow-400" }
+      return { status: "Expired", variant: "destructive" as const }
     }
-    return { status: "Active", variant: "default" as const, color: "text-green-400" }
+    return { status: "Active", variant: "default" as const }
   }
 
   const formatDate = (dateString: string) => {
@@ -315,7 +315,7 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <div className="relative">
             <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
@@ -333,450 +333,418 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
-
-      <div className="relative z-10 p-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-600/20 rounded-lg backdrop-blur-sm border border-purple-500/20">
-                  <Shield className="h-8 w-8 text-purple-400" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold text-white">Admin Dashboard</h1>
-                  <p className="text-purple-200 text-lg">Manage your Movie Time platform</p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="container mx-auto p-6 max-w-7xl">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-purple-600 rounded-lg">
+              <Shield className="h-8 w-8 text-white" />
             </div>
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={() => fetchAllData(true)}
-                disabled={isRefreshing}
-                className="bg-purple-600/20 hover:bg-purple-600/30 text-purple-100 border border-purple-500/30 backdrop-blur-sm"
-                variant="outline"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-                Refresh Data
-              </Button>
-              <Button
-                onClick={() => (window.location.href = "/")}
-                className="bg-slate-600/20 hover:bg-slate-600/30 text-slate-100 border border-slate-500/30 backdrop-blur-sm"
-                variant="outline"
-              >
-                <Home className="h-4 w-4 mr-2" />
-                Back to App
-              </Button>
-              <Button
-                onClick={handleLogout}
-                className="bg-red-600/20 hover:bg-red-600/30 text-red-100 border border-red-500/30 backdrop-blur-sm"
-                variant="outline"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+              <p className="text-slate-400">Manage your Movie Time platform</p>
             </div>
           </div>
-
-          {/* Navigation */}
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: "overview", label: "Overview", icon: TrendingUp },
-              { id: "users", label: "Users", icon: UsersIcon },
-              { id: "codes", label: "Access Codes", icon: Key },
-            ].map((tab) => {
-              const Icon = tab.icon
-              return (
-                <Button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  variant={activeTab === tab.id ? "default" : "outline"}
-                  className={
-                    activeTab === tab.id
-                      ? "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/25"
-                      : "bg-slate-800/50 hover:bg-slate-700/50 text-slate-200 border-slate-600/50 backdrop-blur-sm"
-                  }
-                >
-                  <Icon className="h-4 w-4 mr-2" />
-                  {tab.label}
-                </Button>
-              )
-            })}
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => fetchAllData(true)}
+              disabled={isRefreshing}
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-800"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => (window.location.href = "/")}
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-800"
+            >
+              <Home className="h-4 w-4 mr-2" />
+              Back to App
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="border-red-600 text-red-400 hover:bg-red-950 bg-transparent"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
           </div>
+        </div>
 
-          {/* Overview Tab */}
-          {activeTab === "overview" && (
-            <div className="space-y-8">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-800/60 transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-300">Total Users</CardTitle>
-                    <div className="p-2 bg-blue-600/20 rounded-lg">
-                      <UsersIcon className="h-4 w-4 text-blue-400" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-white mb-1">{stats.totalUsers}</div>
-                    <p className="text-xs text-blue-400 flex items-center gap-1">
-                      <Activity className="h-3 w-3" />
-                      {stats.activeUsers} active this week
-                    </p>
-                  </CardContent>
-                </Card>
+        {/* Navigation Tabs */}
+        <div className="flex gap-2 mb-8">
+          {[
+            { id: "overview", label: "Overview", icon: TrendingUp },
+            { id: "users", label: "Users", icon: Users },
+            { id: "codes", label: "Access Codes", icon: Key },
+          ].map((tab) => {
+            const Icon = tab.icon
+            return (
+              <Button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                variant={activeTab === tab.id ? "default" : "outline"}
+                className={
+                  activeTab === tab.id
+                    ? "bg-purple-600 hover:bg-purple-700 text-white"
+                    : "border-slate-600 text-slate-300 hover:bg-slate-800"
+                }
+              >
+                <Icon className="h-4 w-4 mr-2" />
+                {tab.label}
+              </Button>
+            )
+          })}
+        </div>
 
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-800/60 transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-300">Access Codes</CardTitle>
-                    <div className="p-2 bg-green-600/20 rounded-lg">
-                      <Key className="h-4 w-4 text-green-400" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-white mb-1">{stats.totalAccessCodes}</div>
-                    <p className="text-xs text-green-400 flex items-center gap-1">
-                      <Activity className="h-3 w-3" />
-                      {stats.activeAccessCodes} active codes
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-800/60 transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-300">Used Codes</CardTitle>
-                    <div className="p-2 bg-purple-600/20 rounded-lg">
-                      <Key className="h-4 w-4 text-purple-400" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-white mb-1">{stats.usedAccessCodes}</div>
-                    <p className="text-xs text-purple-400 flex items-center gap-1">
-                      <Activity className="h-3 w-3" />
-                      Successfully registered
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm hover:bg-slate-800/60 transition-all duration-300">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-slate-300">Favorites</CardTitle>
-                    <div className="p-2 bg-pink-600/20 rounded-lg">
-                      <Star className="h-4 w-4 text-pink-400" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-white mb-1">{stats.totalFavorites}</div>
-                    <p className="text-xs text-pink-400 flex items-center gap-1">
-                      <Activity className="h-3 w-3" />
-                      Total user favorites
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Code Status Breakdown */}
-              <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Key className="h-5 w-5 text-purple-400" />
-                    Access Code Status Overview
-                  </CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Detailed breakdown of all access codes in the system
-                  </CardDescription>
+        {/* Overview Tab */}
+        {activeTab === "overview" && (
+          <div className="space-y-8">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="bg-slate-900 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-blue-400" />
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="text-center p-4 bg-green-600/10 rounded-lg border border-green-600/20">
-                      <div className="text-3xl font-bold text-green-400 mb-2">{stats.activeAccessCodes}</div>
-                      <div className="text-sm text-green-300 font-medium">Active</div>
-                      <div className="text-xs text-slate-400 mt-1">Ready to use</div>
-                    </div>
-                    <div className="text-center p-4 bg-blue-600/10 rounded-lg border border-blue-600/20">
-                      <div className="text-3xl font-bold text-blue-400 mb-2">{stats.usedAccessCodes}</div>
-                      <div className="text-sm text-blue-300 font-medium">Used</div>
-                      <div className="text-xs text-slate-400 mt-1">Successfully registered</div>
-                    </div>
-                    <div className="text-center p-4 bg-yellow-600/10 rounded-lg border border-yellow-600/20">
-                      <div className="text-3xl font-bold text-yellow-400 mb-2">{stats.expiredAccessCodes}</div>
-                      <div className="text-sm text-yellow-300 font-medium">Expired</div>
-                      <div className="text-xs text-slate-400 mt-1">Past expiration date</div>
-                    </div>
-                    <div className="text-center p-4 bg-red-600/10 rounded-lg border border-red-600/20">
-                      <div className="text-3xl font-bold text-red-400 mb-2">{stats.revokedAccessCodes}</div>
-                      <div className="text-sm text-red-300 font-medium">Revoked</div>
-                      <div className="text-xs text-slate-400 mt-1">Manually disabled</div>
-                    </div>
-                  </div>
+                  <div className="text-2xl font-bold text-white">{stats.totalUsers}</div>
+                  <p className="text-xs text-blue-400 mt-1">{stats.activeUsers} active this week</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Access Codes</CardTitle>
+                  <Key className="h-4 w-4 text-green-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{stats.totalAccessCodes}</div>
+                  <p className="text-xs text-green-400 mt-1">{stats.activeAccessCodes} active codes</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Used Codes</CardTitle>
+                  <Activity className="h-4 w-4 text-purple-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{stats.usedAccessCodes}</div>
+                  <p className="text-xs text-purple-400 mt-1">Successfully registered</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Favorites</CardTitle>
+                  <Star className="h-4 w-4 text-pink-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{stats.totalFavorites}</div>
+                  <p className="text-xs text-pink-400 mt-1">Total user favorites</p>
                 </CardContent>
               </Card>
             </div>
-          )}
 
-          {/* Users Tab */}
-          {activeTab === "users" && (
-            <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
+            {/* Code Status Breakdown */}
+            <Card className="bg-slate-900 border-slate-700">
               <CardHeader>
                 <CardTitle className="text-white flex items-center gap-2">
-                  <UsersIcon className="h-5 w-5 text-blue-400" />
-                  User Management
-                  <Badge variant="secondary" className="bg-blue-600/20 text-blue-300 border-blue-600/30">
-                    {users.length} total
-                  </Badge>
+                  <Key className="h-5 w-5 text-purple-400" />
+                  Access Code Status Overview
                 </CardTitle>
                 <CardDescription className="text-slate-400">
-                  Manage registered users and their account status
+                  Detailed breakdown of all access codes in the system
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {users.length === 0 ? (
-                  <div className="text-center py-12">
-                    <UsersIcon className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400 text-lg mb-2">No users found</p>
-                    <p className="text-slate-500 text-sm">Users will appear here once they register</p>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="text-center p-4 bg-green-950 rounded-lg border border-green-800">
+                    <div className="text-2xl font-bold text-green-400 mb-2">{stats.activeAccessCodes}</div>
+                    <div className="text-sm text-green-300 font-medium">Active</div>
+                    <div className="text-xs text-slate-400 mt-1">Ready to use</div>
                   </div>
-                ) : (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {users.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600/30 hover:bg-slate-700/50 transition-all duration-200"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                              {user.username.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <span className="font-semibold text-white text-lg">{user.username}</span>
-                              {user.isActive && (
-                                <Badge
-                                  variant="default"
-                                  className="ml-2 bg-green-600/20 text-green-300 border-green-600/30"
-                                >
-                                  Active
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-sm text-slate-400 space-y-2 ml-13">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-purple-400" />
-                              <span>Joined: {formatDate(user.joinDate)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-blue-400" />
-                              <span>Last active: {formatRelativeTime(user.lastActive)}</span>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <span className="flex items-center gap-1">
-                                <Activity className="h-4 w-4 text-green-400" />
-                                Watched: {user.totalWatched}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Star className="h-4 w-4 text-pink-400" />
-                                Favorites: {user.totalFavorites}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={actionLoading === `remove-${user.id}`}
-                              className="bg-red-600/10 hover:bg-red-600/20 text-red-400 border-red-600/30 hover:border-red-600/50"
-                            >
-                              {actionLoading === `remove-${user.id}` ? (
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-slate-800 border-slate-700 backdrop-blur-sm">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="text-white">Remove User</AlertDialogTitle>
-                              <AlertDialogDescription className="text-slate-300">
-                                Are you sure you want to remove user "{user.username}"? This action cannot be undone and
-                                will delete all their data including favorites and watch history.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="bg-slate-700 text-white hover:bg-slate-600 border-slate-600">
-                                Cancel
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => removeUser(user.id, user.username)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Remove User
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    ))}
+                  <div className="text-center p-4 bg-blue-950 rounded-lg border border-blue-800">
+                    <div className="text-2xl font-bold text-blue-400 mb-2">{stats.usedAccessCodes}</div>
+                    <div className="text-sm text-blue-300 font-medium">Used</div>
+                    <div className="text-xs text-slate-400 mt-1">Successfully registered</div>
                   </div>
-                )}
+                  <div className="text-center p-4 bg-yellow-950 rounded-lg border border-yellow-800">
+                    <div className="text-2xl font-bold text-yellow-400 mb-2">{stats.expiredAccessCodes}</div>
+                    <div className="text-sm text-yellow-300 font-medium">Expired</div>
+                    <div className="text-xs text-slate-400 mt-1">Past expiration date</div>
+                  </div>
+                  <div className="text-center p-4 bg-red-950 rounded-lg border border-red-800">
+                    <div className="text-2xl font-bold text-red-400 mb-2">{stats.revokedAccessCodes}</div>
+                    <div className="text-sm text-red-300 font-medium">Revoked</div>
+                    <div className="text-xs text-slate-400 mt-1">Manually disabled</div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
+          </div>
+        )}
 
-          {/* Access Codes Tab */}
-          {activeTab === "codes" && (
-            <Card className="bg-slate-800/50 border-slate-700/50 backdrop-blur-sm">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-white flex items-center gap-2">
-                      <Key className="h-5 w-5 text-green-400" />
-                      Access Code Management
-                      <Badge variant="secondary" className="bg-green-600/20 text-green-300 border-green-600/30">
-                        {accessCodes.length} total
-                      </Badge>
-                    </CardTitle>
-                    <CardDescription className="text-slate-400">
-                      Generate and manage access codes for user registration
-                    </CardDescription>
-                  </div>
+        {/* Users Tab */}
+        {activeTab === "users" && (
+          <Card className="bg-slate-900 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-400" />
+                User Management
+                <Badge variant="secondary" className="bg-blue-900 text-blue-300">
+                  {users.length} total
+                </Badge>
+              </CardTitle>
+              <CardDescription className="text-slate-400">
+                Manage registered users and their account status
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {users.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400 text-lg mb-2">No users found</p>
+                  <p className="text-slate-500 text-sm">Users will appear here once they register</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {users.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between p-4 bg-slate-800 rounded-lg border border-slate-700"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                            {user.username.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-white text-lg">{user.username}</span>
+                            {user.isActive && (
+                              <Badge variant="default" className="ml-2 bg-green-900 text-green-300">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-sm text-slate-400 space-y-2 ml-13">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-purple-400" />
+                            <span>Joined: {formatDate(user.joinDate)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-blue-400" />
+                            <span>Last active: {formatRelativeTime(user.lastActive)}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
+                              <Activity className="h-4 w-4 text-green-400" />
+                              Watched: {user.totalWatched}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Star className="h-4 w-4 text-pink-400" />
+                              Favorites: {user.totalFavorites}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={actionLoading === `remove-${user.id}`}
+                            className="border-red-600 text-red-400 hover:bg-red-950 bg-transparent"
+                          >
+                            {actionLoading === `remove-${user.id}` ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-slate-800 border-slate-700">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-white">Remove User</AlertDialogTitle>
+                            <AlertDialogDescription className="text-slate-300">
+                              Are you sure you want to remove user "{user.username}"? This action cannot be undone and
+                              will delete all their data including favorites and watch history.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-slate-700 text-white hover:bg-slate-600 border-slate-600">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => removeUser(user.id, user.username)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Remove User
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Access Codes Tab */}
+        {activeTab === "codes" && (
+          <Card className="bg-slate-900 border-slate-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Key className="h-5 w-5 text-green-400" />
+                    Access Code Management
+                    <Badge variant="secondary" className="bg-green-900 text-green-300">
+                      {accessCodes.length} total
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Generate and manage access codes for user registration
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={generateAccessCode}
+                  disabled={actionLoading === "generate"}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {actionLoading === "generate" ? (
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  Generate New Code
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {accessCodes.length === 0 ? (
+                <div className="text-center py-12">
+                  <Key className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400 text-lg mb-2">No access codes found</p>
+                  <p className="text-slate-500 text-sm mb-4">
+                    Generate your first access code to allow user registration
+                  </p>
                   <Button
                     onClick={generateAccessCode}
                     disabled={actionLoading === "generate"}
-                    className="bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25"
+                    className="bg-green-600 hover:bg-green-700 text-white"
                   >
                     {actionLoading === "generate" ? (
                       <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                     ) : (
                       <Plus className="h-4 w-4 mr-2" />
                     )}
-                    Generate New Code
+                    Generate Access Code
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {accessCodes.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Key className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                    <p className="text-slate-400 text-lg mb-2">No access codes found</p>
-                    <p className="text-slate-500 text-sm mb-4">
-                      Generate your first access code to allow user registration
-                    </p>
-                    <Button
-                      onClick={generateAccessCode}
-                      disabled={actionLoading === "generate"}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {actionLoading === "generate" ? (
-                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Plus className="h-4 w-4 mr-2" />
-                      )}
-                      Generate Access Code
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {accessCodes.map((code) => {
-                      const { status, variant, color } = getAccessCodeStatus(code)
-                      const canRevoke = status === "Active"
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {accessCodes.map((code) => {
+                    const { status, variant } = getAccessCodeStatus(code)
+                    const canRevoke = status === "Active"
 
-                      return (
-                        <div
-                          key={code.id}
-                          className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600/30 hover:bg-slate-700/50 transition-all duration-200"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <code className="font-mono text-lg bg-slate-600/50 px-3 py-1 rounded-md text-white border border-slate-500/50">
-                                {code.code}
-                              </code>
-                              <Badge variant={variant} className={`${color} border-current/30 bg-current/10`}>
-                                {status}
-                              </Badge>
-                            </div>
-                            <div className="text-sm text-slate-400 space-y-2">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                <div className="flex items-center gap-2">
-                                  <UsersIcon className="h-4 w-4 text-purple-400" />
-                                  <span>Created by: {code.createdBy}</span>
-                                </div>
-                                {code.used_by && (
-                                  <div className="flex items-center gap-2">
-                                    <UsersIcon className="h-4 w-4 text-blue-400" />
-                                    <span>Used by: {code.used_by}</span>
-                                  </div>
-                                )}
+                    return (
+                      <div
+                        key={code.id}
+                        className="flex items-center justify-between p-4 bg-slate-800 rounded-lg border border-slate-700"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-3">
+                            <code className="font-mono text-lg bg-slate-700 px-3 py-1 rounded-md text-white border border-slate-600">
+                              {code.code}
+                            </code>
+                            <Badge variant={variant}>{status}</Badge>
+                          </div>
+                          <div className="text-sm text-slate-400 space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-purple-400" />
+                                <span>Created by: {code.createdBy}</span>
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {code.used_by && (
                                 <div className="flex items-center gap-2">
-                                  <Calendar className="h-4 w-4 text-green-400" />
-                                  <span>Created: {formatDate(code.created_at)}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4 text-yellow-400" />
-                                  <span>Expires: {formatDate(code.expires_at)}</span>
-                                </div>
-                              </div>
-                              {code.used_at && (
-                                <div className="flex items-center gap-2">
-                                  <Activity className="h-4 w-4 text-blue-400" />
-                                  <span>Used: {formatDate(code.used_at)}</span>
+                                  <Users className="h-4 w-4 text-blue-400" />
+                                  <span>Used by: {code.used_by}</span>
                                 </div>
                               )}
                             </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-green-400" />
+                                <span>Created: {formatDate(code.created_at)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-yellow-400" />
+                                <span>Expires: {formatDate(code.expires_at)}</span>
+                              </div>
+                            </div>
+                            {code.used_at && (
+                              <div className="flex items-center gap-2">
+                                <Activity className="h-4 w-4 text-blue-400" />
+                                <span>Used: {formatDate(code.used_at)}</span>
+                              </div>
+                            )}
                           </div>
-                          {canRevoke && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={actionLoading === `revoke-${code.id}`}
-                                  className="bg-orange-600/10 hover:bg-orange-600/20 text-orange-400 border-orange-600/30 hover:border-orange-600/50"
-                                >
-                                  {actionLoading === `revoke-${code.id}` ? (
-                                    <RefreshCw className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Ban className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="bg-slate-800 border-slate-700 backdrop-blur-sm">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-white">Revoke Access Code</AlertDialogTitle>
-                                  <AlertDialogDescription className="text-slate-300">
-                                    Are you sure you want to revoke access code "{code.code}"? This will prevent it from
-                                    being used for registration. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel className="bg-slate-700 text-white hover:bg-slate-600 border-slate-600">
-                                    Cancel
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => revokeAccessCode(code.id, code.code)}
-                                    className="bg-orange-600 hover:bg-orange-700"
-                                  >
-                                    Revoke Code
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+                        {canRevoke && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={actionLoading === `revoke-${code.id}`}
+                                className="border-orange-600 text-orange-400 hover:bg-orange-950 bg-transparent"
+                              >
+                                {actionLoading === `revoke-${code.id}` ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Ban className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-slate-800 border-slate-700">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-white">Revoke Access Code</AlertDialogTitle>
+                                <AlertDialogDescription className="text-slate-300">
+                                  Are you sure you want to revoke access code "{code.code}"? This will prevent it from
+                                  being used for registration. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="bg-slate-700 text-white hover:bg-slate-600 border-slate-600">
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => revokeAccessCode(code.id, code.code)}
+                                  className="bg-orange-600 hover:bg-orange-700"
+                                >
+                                  Revoke Code
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )
