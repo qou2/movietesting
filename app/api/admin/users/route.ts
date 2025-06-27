@@ -4,50 +4,88 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+// Force dynamic rendering
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
+    console.log("🔍 Fetching all users for admin...")
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get users with their stats
-    const { data: users, error: usersError } = await supabase
+    // Get all users with their basic information
+    const { data: users, error } = await supabase
       .from("user_profiles")
-      .select("*")
-      .order("last_active", { ascending: false })
+      .select("id, username, email, created_at, last_active")
+      .order("created_at", { ascending: false })
 
-    if (usersError) throw usersError
+    if (error) {
+      console.error("❌ Error fetching users:", error)
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to fetch users",
+          details: error.message,
+        },
+        { status: 500 },
+      )
+    }
 
-    // Get watch history counts for each user
-    const { data: watchCounts, error: watchError } = await supabase.from("watch_history").select("user_id")
+    // Get additional stats for each user
+    const usersWithStats = await Promise.all(
+      (users || []).map(async (user) => {
+        // Get watch history count
+        const { count: watchCount } = await supabase
+          .from("watch_history")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
 
-    if (watchError) throw watchError
-
-    // Get favorites counts for each user
-    const { data: favoriteCounts, error: favoritesError } = await supabase.from("favorites").select("user_id")
-
-    if (favoritesError) throw favoritesError
-
-    // Combine data
-    const userData =
-      users?.map((user) => {
-        const totalWatched = watchCounts?.filter((w) => w.user_id === user.id).length || 0
-        const totalFavorites = favoriteCounts?.filter((f) => f.user_id === user.id).length || 0
+        // Get favorites count
+        const { count: favoritesCount } = await supabase
+          .from("favorites")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
 
         return {
           id: user.id,
           username: user.username,
-          lastActive: user.last_active,
-          totalWatched,
-          totalFavorites,
+          email: user.email,
           joinDate: user.created_at,
+          lastActive: user.last_active,
+          totalWatched: watchCount || 0,
+          totalFavorites: favoritesCount || 0,
+          isActive: user.last_active
+            ? new Date(user.last_active) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            : false,
         }
-      }) || []
+      }),
+    )
 
-    return NextResponse.json({
-      success: true,
-      data: userData,
-    })
+    console.log(`✅ Fetched ${usersWithStats.length} users with stats`)
+
+    return NextResponse.json(
+      {
+        success: true,
+        users: usersWithStats,
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
+    )
   } catch (error) {
-    console.error("Admin users error:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch users data" }, { status: 500 })
+    console.error("💥 Users fetch error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
