@@ -17,13 +17,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { toast } from "@/hooks/use-toast"
-import { Shield, UsersIcon, Key, Trash2, RefreshCw, Clock, Calendar, Ban, Plus } from "lucide-react"
+import { Shield, UsersIcon, Key, Trash2, RefreshCw, Clock, Calendar, Ban, Plus, LogOut } from "lucide-react"
 
 interface User {
   id: string
   username: string
-  created_at: string
-  last_active: string
+  email?: string
+  joinDate: string
+  lastActive: string
+  totalWatched: number
+  totalFavorites: number
+  isActive: boolean
 }
 
 interface AccessCode {
@@ -34,16 +38,23 @@ interface AccessCode {
   used_at: string | null
   used_by: string | null
   is_active: boolean
-  created_by: string
+  is_used: boolean
+  createdBy: string
+  admin_action?: string
 }
 
 interface AdminStats {
   totalUsers: number
+  activeUsers: number
   totalAccessCodes: number
   activeAccessCodes: number
   usedAccessCodes: number
   expiredAccessCodes: number
   revokedAccessCodes: number
+  totalWatchTime: number
+  totalMoviesWatched: number
+  totalTvWatched: number
+  totalFavorites: number
 }
 
 export default function AdminDashboard() {
@@ -52,22 +63,20 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<AdminStats>({
     totalUsers: 0,
+    activeUsers: 0,
     totalAccessCodes: 0,
     activeAccessCodes: 0,
     usedAccessCodes: 0,
     expiredAccessCodes: 0,
     revokedAccessCodes: 0,
+    totalWatchTime: 0,
+    totalMoviesWatched: 0,
+    totalTvWatched: 0,
+    totalFavorites: 0,
   })
   const [users, setUsers] = useState<User[]>([])
   const [accessCodes, setAccessCodes] = useState<AccessCode[]>([])
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "codes" | "settings">("overview")
-  const [confirmDialog, setConfirmDialog] = useState<{
-    show: boolean
-    type: "revoke" | "remove"
-    id: string
-    title: string
-    message: string
-  } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
@@ -77,14 +86,6 @@ export default function AdminDashboard() {
       description: text,
       variant: type === "success" ? undefined : "destructive",
     })
-  }
-
-  const showConfirmDialog = (type: "revoke" | "remove", id: string, title: string, message: string) => {
-    setConfirmDialog({ show: true, type, id, title, message })
-  }
-
-  const hideConfirmDialog = () => {
-    setConfirmDialog(null)
   }
 
   useEffect(() => {
@@ -137,31 +138,34 @@ export default function AdminDashboard() {
       // Handle stats
       if (statsResult.status === "fulfilled" && statsResult.value.ok) {
         const statsData = await statsResult.value.json()
-        if (statsData.success) {
+        if (statsData.success && statsData.stats) {
           setStats(statsData.stats)
         }
       } else {
         console.error("Failed to fetch stats:", statsResult)
+        showMessage("error", "Failed to load statistics")
       }
 
       // Handle users
       if (usersResult.status === "fulfilled" && usersResult.value.ok) {
         const usersData = await usersResult.value.json()
-        if (usersData.success) {
+        if (usersData.success && usersData.users) {
           setUsers(usersData.users)
         }
       } else {
         console.error("Failed to fetch users:", usersResult)
+        showMessage("error", "Failed to load users")
       }
 
       // Handle access codes
       if (codesResult.status === "fulfilled" && codesResult.value.ok) {
         const codesData = await codesResult.value.json()
-        if (codesData.success) {
+        if (codesData.success && codesData.accessCodes) {
           setAccessCodes(codesData.accessCodes)
         }
       } else {
         console.error("Failed to fetch access codes:", codesResult)
+        showMessage("error", "Failed to load access codes")
       }
 
       if (showRefreshToast) {
@@ -248,7 +252,7 @@ export default function AdminDashboard() {
       const data = await response.json()
 
       if (data.success) {
-        showMessage("success", `New access code: ${data.code}`)
+        showMessage("success", `New access code generated: ${data.code}`)
         // Refresh data after successful generation
         await fetchAllData()
       } else {
@@ -266,10 +270,10 @@ export default function AdminDashboard() {
     const now = new Date()
     const expiresAt = new Date(accessCode.expires_at)
 
-    if (!accessCode.is_active) {
+    if (!accessCode.is_active || accessCode.admin_action) {
       return { status: "Revoked", variant: "secondary" as const }
     }
-    if (accessCode.used_at) {
+    if (accessCode.is_used || accessCode.used_at) {
       return { status: "Used", variant: "outline" as const }
     }
     if (expiresAt < now) {
@@ -329,85 +333,162 @@ export default function AdminDashboard() {
             </h1>
             <p className="text-slate-300 mt-1">Manage users and access codes</p>
           </div>
-          <Button
-            onClick={() => fetchAllData(true)}
-            disabled={isRefreshing}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh Data
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => fetchAllData(true)}
+              disabled={isRefreshing}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh Data
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white bg-transparent"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-200">Total Users</CardTitle>
-              <UsersIcon className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.totalUsers}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-200">Total Access Codes</CardTitle>
-              <Key className="h-4 w-4 text-green-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.totalAccessCodes}</div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-200">Active Codes</CardTitle>
-              <Key className="h-4 w-4 text-purple-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.activeAccessCodes}</div>
-              <p className="text-xs text-slate-400 mt-1">
-                Used: {stats.usedAccessCodes} | Expired: {stats.expiredAccessCodes} | Revoked:{" "}
-                {stats.revokedAccessCodes}
-              </p>
-            </CardContent>
-          </Card>
+        {/* Navigation Tabs */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "overview", label: "Overview" },
+            { id: "users", label: "Users" },
+            { id: "codes", label: "Access Codes" },
+            { id: "settings", label: "Settings" },
+          ].map((tab) => (
+            <Button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              variant={activeTab === tab.id ? "default" : "outline"}
+              className={activeTab === tab.id ? "bg-purple-600 hover:bg-purple-700" : ""}
+            >
+              {tab.label}
+            </Button>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Users Management */}
+        {/* Overview Tab */}
+        {activeTab === "overview" && (
+          <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-200">Total Users</CardTitle>
+                  <UsersIcon className="h-4 w-4 text-blue-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{stats.totalUsers}</div>
+                  <p className="text-xs text-slate-400">Active: {stats.activeUsers}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-200">Access Codes</CardTitle>
+                  <Key className="h-4 w-4 text-green-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{stats.totalAccessCodes}</div>
+                  <p className="text-xs text-slate-400">Active: {stats.activeAccessCodes}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-200">Watch Time</CardTitle>
+                  <Clock className="h-4 w-4 text-purple-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{stats.totalWatchTime}h</div>
+                  <p className="text-xs text-slate-400">
+                    Movies: {stats.totalMoviesWatched} | TV: {stats.totalTvWatched}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-200">Favorites</CardTitle>
+                  <Key className="h-4 w-4 text-pink-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{stats.totalFavorites}</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Code Status Breakdown */}
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="text-white">Access Code Status Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-400">{stats.activeAccessCodes}</div>
+                    <div className="text-sm text-slate-400">Active</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-400">{stats.usedAccessCodes}</div>
+                    <div className="text-sm text-slate-400">Used</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-400">{stats.expiredAccessCodes}</div>
+                    <div className="text-sm text-slate-400">Expired</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-400">{stats.revokedAccessCodes}</div>
+                    <div className="text-sm text-slate-400">Revoked</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === "users" && (
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
                 <UsersIcon className="h-5 w-5 text-blue-400" />
-                Users Management
+                Users Management ({users.length} total)
               </CardTitle>
-              <CardDescription className="text-slate-400">
-                Manage registered users ({users.length} total)
-              </CardDescription>
+              <CardDescription className="text-slate-400">Manage registered users</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {users.length === 0 ? (
-                <p className="text-slate-400 text-center py-4">No users found</p>
+                <p className="text-slate-400 text-center py-8">No users found</p>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {users.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                    <div key={user.id} className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <UsersIcon className="h-4 w-4 text-slate-400" />
+                        <div className="flex items-center gap-2 mb-2">
                           <span className="font-medium text-white">{user.username}</span>
+                          {user.isActive && (
+                            <Badge variant="default" className="bg-green-600">
+                              Active
+                            </Badge>
+                          )}
                         </div>
-                        <div className="text-xs text-slate-400 mt-1 space-y-1">
+                        <div className="text-sm text-slate-400 space-y-1">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            Joined: {formatDate(user.created_at)}
+                            Joined: {formatDate(user.joinDate)}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            Last active: {formatRelativeTime(user.last_active)}
+                            Last active: {formatRelativeTime(user.lastActive)}
+                          </div>
+                          <div>
+                            Watched: {user.totalWatched} | Favorites: {user.totalFavorites}
                           </div>
                         </div>
                       </div>
@@ -425,7 +506,8 @@ export default function AdminDashboard() {
                           <AlertDialogHeader>
                             <AlertDialogTitle className="text-white">Remove User</AlertDialogTitle>
                             <AlertDialogDescription className="text-slate-300">
-                              Are you sure you want to remove user "{user.username}"? This action cannot be undone.
+                              Are you sure you want to remove user "{user.username}"? This action cannot be undone and
+                              will delete all their data.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -447,19 +529,19 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
+        )}
 
-          {/* Access Codes Management */}
+        {/* Access Codes Tab */}
+        {activeTab === "codes" && (
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Key className="h-5 w-5 text-green-400" />
-                    Access Codes
+                    Access Codes ({accessCodes.length} total)
                   </CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Manage access codes ({accessCodes.length} total)
-                  </CardDescription>
+                  <CardDescription className="text-slate-400">Manage access codes</CardDescription>
                 </div>
                 <Button
                   onClick={generateAccessCode}
@@ -472,19 +554,21 @@ export default function AdminDashboard() {
                   ) : (
                     <Plus className="h-4 w-4 mr-2" />
                   )}
-                  Generate
+                  Generate Code
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {accessCodes.length === 0 ? (
-                <p className="text-slate-400 text-center py-4">No access codes found</p>
+                <p className="text-slate-400 text-center py-8">No access codes found</p>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {accessCodes.map((code) => {
                     const { status, variant } = getAccessCodeStatus(code)
+                    const canRevoke = status === "Active"
+
                     return (
-                      <div key={code.id} className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg">
+                      <div key={code.id} className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <code className="font-mono text-sm bg-slate-600 px-2 py-1 rounded text-white">
@@ -492,13 +576,14 @@ export default function AdminDashboard() {
                             </code>
                             <Badge variant={variant}>{status}</Badge>
                           </div>
-                          <div className="text-xs text-slate-400 space-y-1">
+                          <div className="text-sm text-slate-400 space-y-1">
+                            <div>Created by: {code.createdBy}</div>
                             <div>Created: {formatDate(code.created_at)}</div>
                             <div>Expires: {formatDate(code.expires_at)}</div>
                             {code.used_at && <div>Used: {formatDate(code.used_at)}</div>}
                           </div>
                         </div>
-                        {status === "Active" && (
+                        {canRevoke && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -543,8 +628,34 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === "settings" && (
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">System Settings</CardTitle>
+              <CardDescription className="text-slate-400">Configure platform settings</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-12">
+                <p className="text-slate-400 text-lg mb-2">Settings panel coming soon</p>
+                <p className="text-slate-500 text-sm">
+                  Advanced configuration options will be available in future updates
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Back to App */}
+        <div className="text-center">
+          <Button onClick={() => (window.location.href = "/")} variant="outline">
+            Back to Movie Time
+          </Button>
         </div>
       </div>
     </div>
   )
 }
+
