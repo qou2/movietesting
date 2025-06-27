@@ -1,96 +1,92 @@
-import { type NextRequest, NextResponse } from "next/server"
-import jwt from "jsonwebtoken"
-import { supabase } from "@/lib/supabase"
+import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
-// Force dynamic rendering for this API route
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+// Force dynamic rendering
 export const dynamic = "force-dynamic"
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log("Auth check started")
+    console.log("🔍 Fetching all users for admin...")
 
-    // Get JWT_SECRET from environment - fail if not set
-    const JWT_SECRET = process.env.JWT_SECRET
-    if (!JWT_SECRET) {
-      console.error("JWT_SECRET environment variable is not set")
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Server configuration error: JWT_SECRET not configured",
-        },
-        { status: 500 },
-      )
-    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get token from cookies using the request object
-    const token = request.cookies.get("auth-token")?.value
-
-    if (!token) {
-      console.log("No auth token found in cookies")
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
-    }
-
-    console.log("Token found, verifying with JWT_SECRET...")
-
-    let decoded: { userId: string; username: string }
-    try {
-      decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string }
-      console.log("Token verified for user:", decoded.username)
-    } catch (jwtError) {
-      console.error("JWT verification failed:", jwtError)
-      return NextResponse.json({ success: false, error: "Invalid or expired token" }, { status: 401 })
-    }
-
-    // Check Supabase connection
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-      console.error("Supabase environment variables not set")
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Database configuration error",
-        },
-        { status: 500 },
-      )
-    }
-
-    console.log("Querying database for user:", decoded.userId)
-
-    // Get fresh user data
-    const { data: user, error } = await supabase
+    // Get all users with their basic information
+    const { data: users, error } = await supabase
       .from("user_profiles")
-      .select("id, username, created_at, last_active")
-      .eq("id", decoded.userId)
-      .single()
+      .select("id, username, email, created_at, last_active")
+      .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Database error:", error)
+      console.error("❌ Error fetching users:", error)
       return NextResponse.json(
         {
           success: false,
-          error: `Database query failed: ${error.message}`,
+          error: "Failed to fetch users",
+          details: error.message,
         },
         { status: 500 },
       )
     }
 
-    if (!user) {
-      console.log("User not found in database for ID:", decoded.userId)
-      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
-    }
+    // Get additional stats for each user
+    const usersWithStats = await Promise.all(
+      (users || []).map(async (user) => {
+        // Get watch history count
+        const { count: watchCount } = await supabase
+          .from("watch_history")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
 
-    console.log("User found successfully:", user.username)
-    return NextResponse.json({
-      success: true,
-      user,
-    })
+        // Get favorites count
+        const { count: favoritesCount } = await supabase
+          .from("favorites")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          joinDate: user.created_at,
+          lastActive: user.last_active,
+          totalWatched: watchCount || 0,
+          totalFavorites: favoritesCount || 0,
+          isActive: user.last_active
+            ? new Date(user.last_active) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            : false,
+        }
+      }),
+    )
+
+    console.log(`✅ Fetched ${usersWithStats.length} users with stats`)
+
+    return NextResponse.json(
+      {
+        success: true,
+        users: usersWithStats,
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
+    )
   } catch (error) {
-    console.error("Unexpected error in auth check:", error)
+    console.error("💥 Users fetch error:", error)
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )
   }
 }
+
