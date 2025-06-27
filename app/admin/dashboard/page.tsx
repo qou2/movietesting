@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -20,6 +18,10 @@ import {
   TrendingUp,
   UserX,
   AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Calendar,
+  Activity,
 } from "lucide-react"
 
 interface AdminStats {
@@ -36,10 +38,12 @@ interface AdminStats {
 interface UserData {
   id: string
   username: string
+  email?: string
   lastActive: string
   totalWatched: number
   totalFavorites: number
   joinDate: string
+  isActive: boolean
 }
 
 interface AccessCodeData {
@@ -49,8 +53,10 @@ interface AccessCodeData {
   createdAt: string
   expiresAt: string
   isUsed: boolean
+  isActive: boolean
   usedBy?: string
   usedAt?: string
+  adminAction?: string
 }
 
 export default function AdminDashboard() {
@@ -70,80 +76,7 @@ export default function AdminDashboard() {
     message: string
   } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
-
-  // Inline styles
-  const containerStyle: React.CSSProperties = {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a0a0a 100%)",
-    color: "#e0e0e0",
-    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
-    padding: "2rem",
-  }
-
-  const cardStyle: React.CSSProperties = {
-    background: "rgba(0, 0, 0, 0.6)",
-    border: "2px solid rgba(239, 68, 68, 0.3)",
-    borderRadius: "1.5rem",
-    backdropFilter: "blur(12px)",
-  }
-
-  const headerStyle: React.CSSProperties = {
-    padding: "1.5rem",
-    borderBottom: "1px solid rgba(239, 68, 68, 0.2)",
-  }
-
-  const contentStyle: React.CSSProperties = {
-    padding: "1.5rem",
-  }
-
-  const buttonStyle: React.CSSProperties = {
-    background: "linear-gradient(135deg, #dc2626, #f97316)",
-    color: "white",
-    padding: "0.75rem 1.5rem",
-    borderRadius: "0.75rem",
-    border: "none",
-    fontWeight: "500",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-  }
-
-  const tabStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.5rem",
-    padding: "0.75rem 1.5rem",
-    borderRadius: "0.75rem",
-    fontWeight: "500",
-    transition: "all 0.3s ease",
-    border: "2px solid",
-    cursor: "pointer",
-  }
-
-  const modalStyle: React.CSSProperties = {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: "rgba(0, 0, 0, 0.8)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000,
-  }
-
-  const modalContentStyle: React.CSSProperties = {
-    background: "rgba(0, 0, 0, 0.9)",
-    border: "2px solid rgba(239, 68, 68, 0.3)",
-    borderRadius: "1rem",
-    padding: "2rem",
-    maxWidth: "400px",
-    width: "90%",
-    textAlign: "center",
-  }
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const showMessage = (type: "success" | "error", text: string) => {
     setMessage({ type, text })
@@ -159,7 +92,10 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    // Check admin authentication
+    checkAuthentication()
+  }, [])
+
+  const checkAuthentication = () => {
     const adminAuth = localStorage.getItem("admin_authenticated")
     const adminAuthTime = localStorage.getItem("admin_auth_time")
 
@@ -172,71 +108,80 @@ export default function AdminDashboard() {
         setIsAuthenticated(true)
         loadDashboardData()
       } else {
-        // Session expired
         handleLogout()
       }
     } else {
       router.push("/admin")
     }
-
     setIsLoading(false)
-  }, [router])
+  }
 
   const loadDashboardData = async () => {
     try {
       setIsLoading(true)
+      console.log("🔄 Loading dashboard data...")
 
-      // Add cache busting timestamp
-      const timestamp = Date.now()
+      // Load all data in parallel with proper error handling
+      const [statsResult, usersResult, codesResult] = await Promise.allSettled([
+        fetch("/api/admin/stats", {
+          method: "GET",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }).then((res) => res.json()),
+        fetch("/api/admin/users", {
+          method: "GET",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }).then((res) => res.json()),
+        fetch("/api/admin/access-codes", {
+          method: "GET",
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        }).then((res) => res.json()),
+      ])
 
-      // Load admin statistics with cache busting
-      const statsResponse = await fetch(`/api/admin/stats?t=${timestamp}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      })
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        console.log("Stats loaded:", statsData)
-        setStats(statsData.data)
+      // Handle stats
+      if (statsResult.status === "fulfilled" && statsResult.value.success) {
+        setStats(statsResult.value.data)
+        console.log("✅ Stats loaded:", statsResult.value.data)
       } else {
-        console.error("Failed to load stats:", statsResponse.status)
+        console.error("❌ Failed to load stats:", statsResult)
+        showMessage("error", "Failed to load statistics")
       }
 
-      // Load users data with cache busting
-      const usersResponse = await fetch(`/api/admin/users?t=${timestamp}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      })
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json()
-        console.log("Users loaded:", usersData.data?.length || 0, "users")
-        setUsers(usersData.data || [])
+      // Handle users
+      if (usersResult.status === "fulfilled" && usersResult.value.success) {
+        setUsers(usersResult.value.data || [])
+        console.log("✅ Users loaded:", usersResult.value.data?.length || 0)
       } else {
-        console.error("Failed to load users:", usersResponse.status)
+        console.error("❌ Failed to load users:", usersResult)
+        showMessage("error", "Failed to load users")
       }
 
-      // Load access codes with cache busting
-      const codesResponse = await fetch(`/api/admin/access-codes?t=${timestamp}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      })
-      if (codesResponse.ok) {
-        const codesData = await codesResponse.json()
-        console.log("Access codes loaded:", codesData.data?.length || 0, "codes")
-        setAccessCodes(codesData.data || [])
+      // Handle access codes
+      if (codesResult.status === "fulfilled" && codesResult.value.success) {
+        setAccessCodes(codesResult.value.data || [])
+        console.log("✅ Access codes loaded:", codesResult.value.data?.length || 0)
       } else {
-        console.error("Failed to load access codes:", codesResponse.status)
+        console.error("❌ Failed to load access codes:", codesResult)
+        showMessage("error", "Failed to load access codes")
       }
 
-      showMessage("success", "Dashboard data refreshed successfully")
+      if (
+        statsResult.status === "fulfilled" ||
+        usersResult.status === "fulfilled" ||
+        codesResult.status === "fulfilled"
+      ) {
+        showMessage("success", "Dashboard data refreshed")
+      }
     } catch (error) {
-      console.error("Error loading dashboard data:", error)
+      console.error("💥 Error loading dashboard data:", error)
       showMessage("error", "Failed to load dashboard data")
     } finally {
       setIsLoading(false)
@@ -251,7 +196,9 @@ export default function AdminDashboard() {
 
   const revokeAccessCode = async (codeId: string) => {
     try {
-      console.log("Revoking access code:", codeId)
+      setActionLoading(codeId)
+      console.log("🔐 Revoking access code:", codeId)
+
       const response = await fetch("/api/admin/revoke-access-code", {
         method: "POST",
         headers: {
@@ -261,24 +208,29 @@ export default function AdminDashboard() {
       })
 
       const data = await response.json()
-      console.log("Revoke response:", data)
+      console.log("📝 Revoke response:", data)
 
       if (response.ok && data.success) {
         showMessage("success", "Access code revoked successfully")
-        loadDashboardData()
+        // Refresh only access codes data
+        await loadAccessCodes()
       } else {
         throw new Error(data.error || "Failed to revoke access code")
       }
     } catch (error) {
-      console.error("Revoke access code error:", error)
+      console.error("❌ Revoke error:", error)
       showMessage("error", error instanceof Error ? error.message : "Failed to revoke access code")
+    } finally {
+      setActionLoading(null)
+      hideConfirmDialog()
     }
-    hideConfirmDialog()
   }
 
   const removeUser = async (userId: string) => {
     try {
-      console.log("Removing user:", userId)
+      setActionLoading(userId)
+      console.log("🗑️ Removing user:", userId)
+
       const response = await fetch("/api/admin/remove-user", {
         method: "POST",
         headers: {
@@ -288,19 +240,40 @@ export default function AdminDashboard() {
       })
 
       const data = await response.json()
-      console.log("Remove user response:", data)
+      console.log("📝 Remove response:", data)
 
       if (response.ok && data.success) {
         showMessage("success", "User removed successfully")
-        loadDashboardData()
+        // Refresh all data since removing a user affects multiple tables
+        await loadDashboardData()
       } else {
         throw new Error(data.error || "Failed to remove user")
       }
     } catch (error) {
-      console.error("Remove user error:", error)
+      console.error("❌ Remove error:", error)
       showMessage("error", error instanceof Error ? error.message : "Failed to remove user")
+    } finally {
+      setActionLoading(null)
+      hideConfirmDialog()
     }
-    hideConfirmDialog()
+  }
+
+  const loadAccessCodes = async () => {
+    try {
+      const response = await fetch("/api/admin/access-codes", {
+        method: "GET",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      })
+      const data = await response.json()
+      if (data.success) {
+        setAccessCodes(data.data || [])
+      }
+    } catch (error) {
+      console.error("Error loading access codes:", error)
+    }
   }
 
   const handleConfirmAction = () => {
@@ -319,20 +292,42 @@ export default function AdminDashboard() {
     setIsRefreshing(false)
   }
 
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    } catch {
+      return "Invalid Date"
+    }
+  }
+
+  const formatDateTime = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    } catch {
+      return "Invalid Date"
+    }
+  }
+
+  const isCodeExpired = (expiresAt: string) => {
+    return new Date(expiresAt) < new Date()
+  }
+
   if (isLoading) {
     return (
-      <div style={containerStyle}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "100vh",
-            color: "#ef4444",
-            fontSize: "1.125rem",
-          }}
-        >
-          Loading admin dashboard...
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 text-red-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-300 text-lg">Loading admin dashboard...</p>
         </div>
       </div>
     )
@@ -343,61 +338,45 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div style={containerStyle}>
-      <div style={{ maxWidth: "112rem", margin: "0 auto" }}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Message Display */}
         {message && (
           <div
-            style={{
-              position: "fixed",
-              top: "2rem",
-              right: "2rem",
-              padding: "1rem 1.5rem",
-              borderRadius: "0.75rem",
-              background: message.type === "success" ? "rgba(34, 197, 94, 0.9)" : "rgba(239, 68, 68, 0.9)",
-              color: "white",
-              zIndex: 1000,
-              animation: "slideIn 0.3s ease-out",
-            }}
+            className={`fixed top-6 right-6 z-50 p-4 rounded-lg shadow-lg ${
+              message.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+            } animate-in slide-in-from-right duration-300`}
           >
-            {message.text}
+            <div className="flex items-center gap-2">
+              {message.type === "success" ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+              {message.text}
+            </div>
           </div>
         )}
 
         {/* Confirmation Dialog */}
         {confirmDialog && (
-          <div style={modalStyle}>
-            <div style={modalContentStyle}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1rem" }}>
-                <AlertTriangle style={{ width: "2rem", height: "2rem", color: "#f59e0b", marginRight: "0.5rem" }} />
-                <h3 style={{ color: "white", margin: 0 }}>{confirmDialog.title}</h3>
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <div className="bg-gray-800 border border-red-500/30 rounded-xl p-6 max-w-md w-full mx-4">
+              <div className="flex items-center gap-3 mb-4">
+                <AlertTriangle className="w-6 h-6 text-yellow-500" />
+                <h3 className="text-xl font-semibold text-white">{confirmDialog.title}</h3>
               </div>
-              <p style={{ color: "#888", marginBottom: "2rem" }}>{confirmDialog.message}</p>
-              <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+              <p className="text-gray-300 mb-6">{confirmDialog.message}</p>
+              <div className="flex gap-3 justify-end">
                 <button
                   onClick={hideConfirmDialog}
-                  style={{
-                    background: "rgba(156, 163, 175, 0.2)",
-                    border: "1px solid rgba(156, 163, 175, 0.3)",
-                    color: "#9ca3af",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "0.5rem",
-                    cursor: "pointer",
-                  }}
+                  disabled={actionLoading !== null}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirmAction}
-                  style={{
-                    background: "rgba(239, 68, 68, 0.2)",
-                    border: "1px solid rgba(239, 68, 68, 0.3)",
-                    color: "#ef4444",
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "0.5rem",
-                    cursor: "pointer",
-                  }}
+                  disabled={actionLoading !== null}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
+                  {actionLoading === confirmDialog.id && <RefreshCw className="w-4 h-4 animate-spin" />}
                   {confirmDialog.type === "revoke" ? "Revoke" : "Remove"}
                 </button>
               </div>
@@ -406,76 +385,39 @@ export default function AdminDashboard() {
         )}
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div
-              style={{
-                width: "3rem",
-                height: "3rem",
-                background: "linear-gradient(135deg, #dc2626, #f97316)",
-                borderRadius: "0.75rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: "1rem",
-              }}
-            >
-              <Shield style={{ width: "1.5rem", height: "1.5rem", color: "white" }} />
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-red-600 to-orange-600 rounded-xl flex items-center justify-center">
+              <Shield className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1
-                style={{
-                  fontSize: "2.25rem",
-                  fontWeight: "bold",
-                  background: "linear-gradient(135deg, #ef4444, #f97316, #ef4444)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
                 Admin Dashboard
               </h1>
-              <p style={{ color: "#888", fontSize: "1.125rem" }}>Movie Time Administration Panel</p>
+              <p className="text-gray-400">Movie Time Administration Panel</p>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div className="flex items-center gap-3">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              style={{
-                ...buttonStyle,
-                background: isRefreshing ? "rgba(156, 163, 175, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                color: isRefreshing ? "#9ca3af" : "#ef4444",
-                cursor: isRefreshing ? "not-allowed" : "pointer",
-              }}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors disabled:opacity-50"
             >
-              <RefreshCw
-                style={{
-                  width: "1rem",
-                  height: "1rem",
-                  animation: isRefreshing ? "spin 1s linear infinite" : "none",
-                }}
-              />
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
               {isRefreshing ? "Refreshing..." : "Refresh"}
             </button>
             <button
               onClick={handleLogout}
-              style={{
-                ...buttonStyle,
-                background: "rgba(239, 68, 68, 0.2)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                color: "#ef4444",
-              }}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
             >
-              <LogOut style={{ width: "1rem", height: "1rem" }} />
+              <LogOut className="w-4 h-4" />
               Logout
             </button>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-2 mb-8">
           {[
             { id: "overview", label: "Overview", icon: BarChart3 },
             { id: "users", label: "Users", icon: Users },
@@ -485,145 +427,91 @@ export default function AdminDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              style={{
-                ...tabStyle,
-                background: activeTab === tab.id ? "rgba(239, 68, 68, 0.3)" : "rgba(0, 0, 0, 0.6)",
-                borderColor: activeTab === tab.id ? "rgba(239, 68, 68, 0.5)" : "rgba(239, 68, 68, 0.3)",
-                color: activeTab === tab.id ? "#ef4444" : "#888",
-              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border-2 ${
+                activeTab === tab.id
+                  ? "bg-red-600/30 border-red-500/50 text-red-400"
+                  : "bg-gray-800/60 border-gray-700/50 text-gray-400 hover:bg-gray-700/60"
+              }`}
             >
-              <tab.icon style={{ width: "1.25rem", height: "1.25rem" }} />
-              <span>{tab.label}</span>
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
             </button>
           ))}
         </div>
 
         {/* Overview Tab */}
         {activeTab === "overview" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          <div className="space-y-6">
             {/* Stats Grid */}
             {stats && (
-              <div
-                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "1.5rem" }}
-              >
-                <div style={cardStyle}>
-                  <div style={contentStyle}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
-                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Total Users</p>
-                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#ef4444" }}>{stats.totalUsers}</p>
-                      </div>
-                      <Users style={{ width: "2rem", height: "2rem", color: "#ef4444" }} />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-gray-800/60 border border-red-500/30 rounded-xl p-6 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Total Users</p>
+                      <p className="text-3xl font-bold text-red-500">{stats.totalUsers}</p>
                     </div>
+                    <Users className="w-8 h-8 text-red-500" />
                   </div>
                 </div>
 
-                <div style={cardStyle}>
-                  <div style={contentStyle}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
-                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Active Codes</p>
-                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#f97316" }}>
-                          {stats.activeAccessCodes}
-                        </p>
-                      </div>
-                      <Key style={{ width: "2rem", height: "2rem", color: "#f97316" }} />
+                <div className="bg-gray-800/60 border border-orange-500/30 rounded-xl p-6 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Active Codes</p>
+                      <p className="text-3xl font-bold text-orange-500">{stats.activeAccessCodes}</p>
                     </div>
+                    <Key className="w-8 h-8 text-orange-500" />
                   </div>
                 </div>
 
-                <div style={cardStyle}>
-                  <div style={contentStyle}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
-                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Total Watch Time</p>
-                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#a855f7" }}>
-                          {stats.totalWatchTime}h
-                        </p>
-                      </div>
-                      <Clock style={{ width: "2rem", height: "2rem", color: "#a855f7" }} />
+                <div className="bg-gray-800/60 border border-purple-500/30 rounded-xl p-6 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Watch Time</p>
+                      <p className="text-3xl font-bold text-purple-500">{stats.totalWatchTime}h</p>
                     </div>
+                    <Clock className="w-8 h-8 text-purple-500" />
                   </div>
                 </div>
 
-                <div style={cardStyle}>
-                  <div style={contentStyle}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div>
-                        <p style={{ color: "#888", fontSize: "0.875rem" }}>Total Favorites</p>
-                        <p style={{ fontSize: "1.875rem", fontWeight: "bold", color: "#10b981" }}>
-                          {stats.totalFavorites}
-                        </p>
-                      </div>
-                      <Heart style={{ width: "2rem", height: "2rem", color: "#10b981" }} />
+                <div className="bg-gray-800/60 border border-green-500/30 rounded-xl p-6 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-400 text-sm">Total Favorites</p>
+                      <p className="text-3xl font-bold text-green-500">{stats.totalFavorites}</p>
                     </div>
+                    <Heart className="w-8 h-8 text-green-500" />
                   </div>
                 </div>
               </div>
             )}
 
             {/* Platform Statistics */}
-            <div style={cardStyle}>
-              <div style={headerStyle}>
-                <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
-                  <TrendingUp
-                    style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }}
-                  />
+            <div className="bg-gray-800/60 border border-red-500/30 rounded-xl backdrop-blur-sm">
+              <div className="p-6 border-b border-red-500/20">
+                <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-red-500" />
                   Platform Statistics
                 </h3>
               </div>
-              <div style={contentStyle}>
+              <div className="p-6">
                 {stats && (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                      gap: "1.5rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "1rem",
-                        background: "rgba(239, 68, 68, 0.2)",
-                        borderRadius: "0.5rem",
-                      }}
-                    >
-                      <Film style={{ width: "2rem", height: "2rem", margin: "0 auto 0.5rem auto", color: "#ef4444" }} />
-                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#ef4444" }}>
-                        {stats.totalMoviesWatched}
-                      </div>
-                      <div style={{ fontSize: "0.875rem", color: "#888" }}>Movies Watched</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center p-4 bg-red-600/20 rounded-lg">
+                      <Film className="w-8 h-8 mx-auto mb-2 text-red-500" />
+                      <div className="text-2xl font-bold text-red-500">{stats.totalMoviesWatched}</div>
+                      <div className="text-sm text-gray-400">Movies Watched</div>
                     </div>
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "1rem",
-                        background: "rgba(59, 130, 246, 0.2)",
-                        borderRadius: "0.5rem",
-                      }}
-                    >
-                      <Tv style={{ width: "2rem", height: "2rem", margin: "0 auto 0.5rem auto", color: "#3b82f6" }} />
-                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#3b82f6" }}>
-                        {stats.totalTvWatched}
-                      </div>
-                      <div style={{ fontSize: "0.875rem", color: "#888" }}>TV Episodes</div>
+                    <div className="text-center p-4 bg-blue-600/20 rounded-lg">
+                      <Tv className="w-8 h-8 mx-auto mb-2 text-blue-500" />
+                      <div className="text-2xl font-bold text-blue-500">{stats.totalTvWatched}</div>
+                      <div className="text-sm text-gray-400">TV Episodes</div>
                     </div>
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "1rem",
-                        background: "rgba(16, 185, 129, 0.2)",
-                        borderRadius: "0.5rem",
-                      }}
-                    >
-                      <Users
-                        style={{ width: "2rem", height: "2rem", margin: "0 auto 0.5rem auto", color: "#10b981" }}
-                      />
-                      <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#10b981" }}>
-                        {stats.activeUsers}
-                      </div>
-                      <div style={{ fontSize: "0.875rem", color: "#888" }}>Active Users</div>
+                    <div className="text-center p-4 bg-green-600/20 rounded-lg">
+                      <Activity className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                      <div className="text-2xl font-bold text-green-500">{stats.activeUsers}</div>
+                      <div className="text-sm text-gray-400">Active Users</div>
                     </div>
                   </div>
                 )}
@@ -634,56 +522,46 @@ export default function AdminDashboard() {
 
         {/* Users Tab */}
         {activeTab === "users" && (
-          <div style={cardStyle}>
-            <div style={headerStyle}>
-              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
-                <Users style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }} />
-                User Management
+          <div className="bg-gray-800/60 border border-red-500/30 rounded-xl backdrop-blur-sm">
+            <div className="p-6 border-b border-red-500/20">
+              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-red-500" />
+                User Management ({users.length} users)
               </h3>
-              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
-                Manage platform users and their activity
-              </p>
+              <p className="text-gray-400 text-sm mt-1">Manage platform users and their activity</p>
             </div>
-            <div style={contentStyle}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.2)" }}>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Username
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Join Date
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Last Active
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Watched
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Favorites
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Actions
-                      </th>
+                    <tr className="border-b border-red-500/20">
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Username</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Join Date</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Last Active</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Watched</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Favorites</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map((user) => (
-                      <tr key={user.id} style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.1)" }}>
-                        <td style={{ padding: "0.75rem", color: "white" }}>{user.username}</td>
-                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
-                          {new Date(user.joinDate).toLocaleDateString()}
+                      <tr key={user.id} className="border-b border-gray-700/50 hover:bg-gray-700/20">
+                        <td className="py-3 px-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-medium">{user.username}</span>
+                            {user.isActive && <span className="w-2 h-2 bg-green-500 rounded-full"></span>}
+                          </div>
                         </td>
-                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
-                          {new Date(user.lastActive).toLocaleDateString()}
+                        <td className="py-3 px-2 text-gray-400 text-sm">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {formatDate(user.joinDate)}
+                          </div>
                         </td>
-                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>{user.totalWatched}</td>
-                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
-                          {user.totalFavorites}
-                        </td>
-                        <td style={{ padding: "0.75rem" }}>
+                        <td className="py-3 px-2 text-gray-400 text-sm">{formatDate(user.lastActive)}</td>
+                        <td className="py-3 px-2 text-gray-400 text-sm">{user.totalWatched}</td>
+                        <td className="py-3 px-2 text-gray-400 text-sm">{user.totalFavorites}</td>
+                        <td className="py-3 px-2">
                           <button
                             onClick={() =>
                               showConfirmDialog(
@@ -693,20 +571,14 @@ export default function AdminDashboard() {
                                 `Are you sure you want to remove user "${user.username}"? This will permanently delete their account and all associated data.`,
                               )
                             }
-                            style={{
-                              background: "rgba(239, 68, 68, 0.2)",
-                              border: "1px solid rgba(239, 68, 68, 0.3)",
-                              color: "#ef4444",
-                              padding: "0.25rem 0.5rem",
-                              borderRadius: "0.25rem",
-                              fontSize: "0.75rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.25rem",
-                            }}
+                            disabled={actionLoading === user.id}
+                            className="flex items-center gap-1 px-3 py-1 bg-red-600/20 border border-red-500/30 text-red-400 rounded text-xs hover:bg-red-600/30 transition-colors disabled:opacity-50"
                           >
-                            <UserX style={{ width: "0.75rem", height: "0.75rem" }} />
+                            {actionLoading === user.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <UserX className="w-3 h-3" />
+                            )}
                             Remove
                           </button>
                         </td>
@@ -714,6 +586,12 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                {users.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No users found</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -721,119 +599,91 @@ export default function AdminDashboard() {
 
         {/* Access Codes Tab */}
         {activeTab === "codes" && (
-          <div style={cardStyle}>
-            <div style={headerStyle}>
-              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
-                <Key style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }} />
-                Access Code Management
+          <div className="bg-gray-800/60 border border-red-500/30 rounded-xl backdrop-blur-sm">
+            <div className="p-6 border-b border-red-500/20">
+              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                <Key className="w-5 h-5 text-red-500" />
+                Access Code Management ({accessCodes.length} codes)
               </h3>
-              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
-                Monitor and manage user-generated access codes
-              </p>
+              <p className="text-gray-400 text-sm mt-1">Monitor and manage user-generated access codes</p>
             </div>
-            <div style={contentStyle}>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.2)" }}>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Code
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Created By
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Created
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Expires
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Status
-                      </th>
-                      <th style={{ textAlign: "left", padding: "0.75rem", color: "#ef4444", fontSize: "0.875rem" }}>
-                        Actions
-                      </th>
+                    <tr className="border-b border-red-500/20">
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Code</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Created By</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Created</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Expires</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Status</th>
+                      <th className="text-left py-3 px-2 text-red-500 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {accessCodes.map((code) => (
-                      <tr key={code.id} style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.1)" }}>
-                        <td style={{ padding: "0.75rem" }}>
-                          <code
-                            style={{
-                              background: "rgba(239, 68, 68, 0.2)",
-                              color: "#ef4444",
-                              padding: "0.25rem 0.5rem",
-                              borderRadius: "0.25rem",
-                              fontSize: "0.875rem",
-                            }}
-                          >
-                            {code.code}
-                          </code>
-                        </td>
-                        <td style={{ padding: "0.75rem", color: "white" }}>{code.createdBy}</td>
-                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
-                          {new Date(code.createdAt).toLocaleDateString()}
-                        </td>
-                        <td style={{ padding: "0.75rem", color: "#888", fontSize: "0.875rem" }}>
-                          {new Date(code.expiresAt).toLocaleDateString()}
-                        </td>
-                        <td style={{ padding: "0.75rem" }}>
-                          <span
-                            style={{
-                              padding: "0.25rem 0.5rem",
-                              borderRadius: "0.25rem",
-                              fontSize: "0.75rem",
-                              fontWeight: "500",
-                              background: code.isUsed
-                                ? "rgba(239, 68, 68, 0.2)"
-                                : new Date(code.expiresAt) < new Date()
-                                  ? "rgba(156, 163, 175, 0.2)"
-                                  : "rgba(34, 197, 94, 0.2)",
-                              color: code.isUsed
-                                ? "#ef4444"
-                                : new Date(code.expiresAt) < new Date()
-                                  ? "#9ca3af"
-                                  : "#22c55e",
-                            }}
-                          >
-                            {code.isUsed ? "Used" : new Date(code.expiresAt) < new Date() ? "Expired" : "Active"}
-                          </span>
-                        </td>
-                        <td style={{ padding: "0.75rem" }}>
-                          {!code.isUsed && new Date(code.expiresAt) > new Date() && (
-                            <button
-                              onClick={() =>
-                                showConfirmDialog(
-                                  "revoke",
-                                  code.id,
-                                  "Revoke Access Code",
-                                  `Are you sure you want to revoke access code "${code.code}"? This action cannot be undone.`,
-                                )
-                              }
-                              style={{
-                                background: "rgba(239, 68, 68, 0.2)",
-                                border: "1px solid rgba(239, 68, 68, 0.3)",
-                                color: "#ef4444",
-                                padding: "0.25rem 0.5rem",
-                                borderRadius: "0.25rem",
-                                fontSize: "0.75rem",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.25rem",
-                              }}
+                    {accessCodes.map((code) => {
+                      const expired = isCodeExpired(code.expiresAt)
+                      const canRevoke = !code.isUsed && !expired && code.isActive
+
+                      return (
+                        <tr key={code.id} className="border-b border-gray-700/50 hover:bg-gray-700/20">
+                          <td className="py-3 px-2">
+                            <code className="bg-red-600/20 text-red-400 px-2 py-1 rounded text-sm font-mono">
+                              {code.code}
+                            </code>
+                          </td>
+                          <td className="py-3 px-2 text-white">{code.createdBy}</td>
+                          <td className="py-3 px-2 text-gray-400 text-sm">{formatDateTime(code.createdAt)}</td>
+                          <td className="py-3 px-2 text-gray-400 text-sm">{formatDateTime(code.expiresAt)}</td>
+                          <td className="py-3 px-2">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                code.isUsed
+                                  ? "bg-red-600/20 text-red-400"
+                                  : expired
+                                    ? "bg-gray-600/20 text-gray-400"
+                                    : code.adminAction
+                                      ? "bg-yellow-600/20 text-yellow-400"
+                                      : "bg-green-600/20 text-green-400"
+                              }`}
                             >
-                              <Trash2 style={{ width: "0.75rem", height: "0.75rem" }} />
-                              Revoke
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                              {code.isUsed ? "Used" : expired ? "Expired" : code.adminAction ? "Revoked" : "Active"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-2">
+                            {canRevoke && (
+                              <button
+                                onClick={() =>
+                                  showConfirmDialog(
+                                    "revoke",
+                                    code.id,
+                                    "Revoke Access Code",
+                                    `Are you sure you want to revoke access code "${code.code}"? This action cannot be undone.`,
+                                  )
+                                }
+                                disabled={actionLoading === code.id}
+                                className="flex items-center gap-1 px-3 py-1 bg-red-600/20 border border-red-500/30 text-red-400 rounded text-xs hover:bg-red-600/30 transition-colors disabled:opacity-50"
+                              >
+                                {actionLoading === code.id ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3 h-3" />
+                                )}
+                                Revoke
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
+                {accessCodes.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <Key className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No access codes found</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -841,21 +691,19 @@ export default function AdminDashboard() {
 
         {/* Settings Tab */}
         {activeTab === "settings" && (
-          <div style={cardStyle}>
-            <div style={headerStyle}>
-              <h3 style={{ color: "white", fontWeight: "600", display: "flex", alignItems: "center", margin: 0 }}>
-                <Settings style={{ width: "1.25rem", height: "1.25rem", marginRight: "0.5rem", color: "#ef4444" }} />
+          <div className="bg-gray-800/60 border border-red-500/30 rounded-xl backdrop-blur-sm">
+            <div className="p-6 border-b border-red-500/20">
+              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                <Settings className="w-5 h-5 text-red-500" />
                 System Settings
               </h3>
-              <p style={{ color: "#888", fontSize: "0.875rem", margin: "0.5rem 0 0 0" }}>
-                Configure platform settings and preferences
-              </p>
+              <p className="text-gray-400 text-sm mt-1">Configure platform settings and preferences</p>
             </div>
-            <div style={contentStyle}>
-              <div style={{ textAlign: "center", padding: "3rem 0" }}>
-                <Settings style={{ width: "4rem", height: "4rem", color: "#888", margin: "0 auto 1rem auto" }} />
-                <p style={{ color: "#888", fontSize: "1.125rem" }}>Settings panel coming soon</p>
-                <p style={{ color: "#666", fontSize: "0.875rem" }}>
+            <div className="p-6">
+              <div className="text-center py-12">
+                <Settings className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-400 text-lg mb-2">Settings panel coming soon</p>
+                <p className="text-gray-500 text-sm">
                   Advanced configuration options will be available in future updates
                 </p>
               </div>
@@ -863,43 +711,16 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Navigation */}
-        <div style={{ marginTop: "3rem", textAlign: "center" }}>
+        {/* Back to App */}
+        <div className="mt-8 text-center">
           <button
             onClick={() => (window.location.href = "/")}
-            style={{
-              ...buttonStyle,
-              background: "rgba(239, 68, 68, 0.2)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              color: "#ef4444",
-            }}
+            className="px-6 py-3 bg-red-600/20 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
           >
             Back to Movie Time
           </button>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-
-        @keyframes spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </div>
   )
 }
