@@ -22,7 +22,6 @@ import { Shield, UsersIcon, Key, Trash2, RefreshCw, Clock, Calendar, Ban, Plus, 
 interface User {
   id: string
   username: string
-  email?: string
   joinDate: string
   lastActive: string
   totalWatched: number
@@ -658,4 +657,3 @@ export default function AdminDashboard() {
     </div>
   )
 }
-
